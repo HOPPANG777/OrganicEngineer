@@ -59,10 +59,10 @@ OrganicEngineer - 구축 ToDo / 주간 구현 순서 / 하이어라키
 ============================================================
 
 Day 1: 부팅/전역 루트 고정
-- [ ] BootScene 정리: BootLoader만 두고 최소 구성 유지
-- [ ] GameRoot 프리팹 생성: BootScene에 배치(자동 생성 금지 정책 유지)
-- [ ] 전역 초기화 진입점 고정: GameRoot.InitializeIfNeeded()만 통해 초기화
-- [ ] 씬 등록: Build Settings에 BootScene/TitleScene/LobbyScene 등록
+- [V] BootScene 정리: BootLoader만 두고 최소 구성 유지
+- [V] GameRoot 프리팹 생성: BootScene에 배치(자동 생성 금지 정책 유지)
+- [V] 전역 초기화 진입점 고정: GameRoot.InitializeIfNeeded()만 통해 초기화
+- [V] 씬 등록: Build Settings에 BootScene/TitleScene/LobbyScene 등록
 
 Day 2: SceneFlow(씬 전환) + 페이드
 - [ ] SceneFlowController(프리팹 부착): Load/Reload/Quit
