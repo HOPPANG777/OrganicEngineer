@@ -1,0 +1,164 @@
+OrganicEngineer - 구축 ToDo / 주간 구현 순서 / 하이어라키
+
+============================================================
+0) 전제(컨벤션)
+============================================================
+- 전역 루트는 GameRoot 1개만 사용
+- GameRoot는 자동 생성 금지(반드시 프리팹/씬 배치)
+- 컨트롤러/팩토리는 생성하지 않고 GameRoot 하위에 “프리팹으로 붙여둠”
+- 전역 초기화는 Start에 두지 않고 BootScene의 BootLoader가 GameRoot.InitializeIfNeeded()를 호출
+
+
+============================================================
+1) ToDo List (게임 시스템 구현 전, 3D 기준 우선순위)
+============================================================
+
+[A] 프로젝트 뼈대(가장 먼저)
+- [ ] 씬 플로우 확정: BootScene → TitleScene → LobbyScene → (Battle/Analysis/Dissection/Assembly)
+- [ ] BootScene 구축: BootLoader로 GameRoot 초기화 후 다음 씬 이동
+- [ ] GameRoot 프리팹화: BootScene에 배치(자동 생성 금지 정책 유지)
+- [ ] 전역 초기화 규칙 정리: Start 의존 금지, InitializeIfNeeded()로 통일
+- [ ] Build Settings 씬 등록: Boot/Title/Lobby/각 게임 씬
+
+[B] 데이터/저장(컨셉상 필수)
+- [ ] 옵션 저장: 그래픽/사운드/조작(카메라 감도 포함)
+- [ ] 진행도 저장 구조: 도감 해금/달성도 등 기본 필드 설계
+- [ ] 전투 로그 저장 구조: 최근 N개 저장 + 조회 메타(시간/상대/결과/요약)
+
+[C] 3D 전환 핵심 기반
+- [ ] 렌더 파이프라인 결정: URP/HDRP 선택 및 프로젝트 세팅 고정
+- [ ] 룩/톤 가이드: 라이트/포스트프로세싱/아웃라인·셀셰이딩 여부
+- [ ] 아트 규격 정의: 스케일(1u=1m), 피벗, LOD, 콜라이더, 머티리얼 규칙
+- [ ] 카메라 시스템: Title/Lobby/작업(해체·조립) 프리셋 구성(예: Cinemachine)
+
+[D] 입력/조작(Feel)
+- [ ] Input System 세팅: UI 입력 + 3D 뷰 조작(회전/팬/줌)
+- [ ] UI 네비게이션: 키보드/패드/마우스 포커스 이동 일관성
+
+[E] UI(타이틀/세팅부터)
+- [ ] TitleScene UI: Continue/New/Settings/Quit + 전환(페이드)
+- [ ] Settings UI
+  - [ ] Graphics: 해상도/전체화면/VSync/FPS/품질/그림자/AA
+  - [ ] Audio: Master/BGM/SFX/UI 슬라이더 + 미리듣기
+  - [ ] Controls: 카메라 감도/키바인딩(구조라도)
+- [ ] 설정 적용 구조: SettingsData ↔ Applier ↔ UI Binder 분리
+
+[F] 3D에서 특히 먼저 결정해야 하는 위험 영역(갈아엎기 방지)
+- [ ] 부위(파트) 시스템 표현 방식 결정: 모듈 파츠(추천) vs 실제 메쉬 절개(고난도)
+- [ ] 부위 ID 매핑 규칙: 파츠/본/콜라이더/도감 UI 클릭 하이라이트 연결
+- [ ] 부위 파괴/상태 연출 규칙: 비활성/머티리얼 변화/이펙트 기준
+
+[G] “게임처럼 돌아가는” 수직 슬라이스(시스템 없이 흐름만)
+- [ ] 로비 씬 1개: 카메라/입력/사운드까지 연결
+- [ ] 버튼으로 씬 이동: Battle/Analysis/Dissection/Assembly는 더미 UI로 연결만
+- [ ] 간단한 로딩/전환 연출: 페이드/로딩 텍스트 수준부터
+
+
+============================================================
+2) 이번 주 구현 순서(수직 슬라이스 기준)
+============================================================
+
+Day 1: 부팅/전역 루트 고정
+- [ ] BootScene 정리: BootLoader만 두고 최소 구성 유지
+- [ ] GameRoot 프리팹 생성: BootScene에 배치(자동 생성 금지 정책 유지)
+- [ ] 전역 초기화 진입점 고정: GameRoot.InitializeIfNeeded()만 통해 초기화
+- [ ] 씬 등록: Build Settings에 BootScene/TitleScene/LobbyScene 등록
+
+Day 2: SceneFlow(씬 전환) + 페이드
+- [ ] SceneFlowController(프리팹 부착): Load/Reload/Quit
+- [ ] 전환 연출: 페이드 인/아웃(로딩 텍스트 최소)
+- [ ] Title → Lobby 전환: 버튼 클릭 시 SceneFlowController로 이동
+
+Day 3: Settings(옵션) 데이터/저장/적용
+- [ ] SettingsData 설계: 그래픽/오디오/카메라 감도(최소)
+- [ ] SaveController(프리팹 부착): 로드/세이브(버전 포함)
+- [ ] SettingsController(프리팹 부착): 로드→적용, Apply/Cancel/Default
+
+Day 4: Input(입력) + 카메라 기본 Feel
+- [ ] InputController(프리팹 부착): UI + 3D 회전/팬/줌 액션
+- [ ] 카메라 프리셋: Title 고정, Lobby 오빗, 작업(해체/조립) 프로토타입
+- [ ] Controls 옵션 연결: 감도 슬라이더 즉시 적용
+
+Day 5: UI 골격 + 더미 씬 연결
+- [ ] UIRoot 프리팹: Canvas 스케일러, 기본 스타일
+- [ ] Title UI: Continue/New/Settings/Quit
+  - [ ] Continue 조건: 세이브 없으면 비활성
+  - [ ] New Game 확인: 덮어쓰기 경고
+- [ ] Lobby UI: 전투/분석/해체/조립 버튼
+- [ ] 씬 연결만 먼저: 버튼 → SceneFlowController.Load("GameBattleScene") 형태
+- [ ] 기본 UX: 버튼 사운드, 포커스 이동
+
+Day 6: Save/Log 기반 최소 완성(컨셉 핵심)
+- [ ] 전투 로그 모델(최소): 전투ID/시간/상대ID/결과/요약
+- [ ] 로그 저장/조회: 최근 N개 + 리스트 화면(임시 UI 가능)
+- [ ] 도감/해금 진행도(최소): 발견/해금/달성도 placeholder
+- [ ] Title Continue가 저장 데이터 기반으로 동작
+
+Day 7: 3D “부위(파트) 규칙” 확정 + 작업 카메라 프로토타입
+- [ ] 파트 구성 방식 결정(추천: 모듈 파츠)
+- [ ] 부위 ID/콜라이더/UI 하이라이트 매핑 규칙 확정
+- [ ] 작업 카메라 완성: 회전/팬/줌 + 선택 하이라이트 최소 구현
+- [ ] 더미 프리팹 1개로 “부위 선택 → 정보 표시” 흐름 검증
+
+
+============================================================
+3) 하이어라키 추천(프리팹/씬 구성)
+============================================================
+
+[BootScene]
+BootScene
+├─ Boot
+│  └─ BootLoader
+└─ GameRoot (Prefab, DontDestroyOnLoad)
+   ├─ _ControllersRoot (Transform 할당용)
+   │  ├─ SceneFlowController
+   │  ├─ SaveController
+   │  ├─ SettingsController
+   │  ├─ InputController
+   │  └─ AudioController (있으면 권장)
+   ├─ _UIRoot (Prefab)
+   │  ├─ Canvas (Screen Space - Overlay)
+   │  │  ├─ FadePanel
+   │  │  ├─ PopupRoot
+   │  │  └─ ToastRoot
+   │  └─ EventSystem
+   └─ _Runtime (옵션)
+      ├─ DebugConsole
+      └─ FPSCounter
+
+[TitleScene]
+TitleScene
+├─ Camera (Cinemachine 또는 기본 Camera)
+├─ Lighting (Directional Light, Volume)
+└─ UI
+   └─ TitleView (Prefab)
+      ├─ Logo
+      ├─ Menu
+      │  ├─ ContinueButton
+      │  ├─ NewGameButton
+      │  ├─ SettingsButton
+      │  └─ QuitButton
+      └─ VersionText
+
+[LobbyScene]
+LobbyScene
+├─ Camera (Lobby 프리셋)
+├─ Lighting
+├─ Environment (작업대/공방 더미)
+└─ UI
+   └─ LobbyView (Prefab)
+      ├─ BattleButton
+      ├─ AnalysisButton
+      ├─ DissectionButton
+      └─ AssemblyButton
+
+[GameDissectionScene / GameAssemblyScene] (작업 씬 프로토타입)
+GameDissectionScene (또는 GameAssemblyScene)
+├─ CameraRig (오빗/팬/줌)
+├─ Workbench (테이블/배경)
+├─ DummyCreature (파트 프리팹 1개)
+└─ UI
+   └─ WorkView
+      ├─ PartInfoPanel
+      └─ ToolPanel (더미)
+
