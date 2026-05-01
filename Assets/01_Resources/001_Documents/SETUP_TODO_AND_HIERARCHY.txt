@@ -14,11 +14,11 @@ OrganicEngineer - 구축 ToDo / 주간 구현 순서 / 하이어라키
 ============================================================
 
 [A] 프로젝트 뼈대(가장 먼저)
-- [ ] 씬 플로우 확정: BootScene → TitleScene → LobbyScene → (Battle/Analysis/Dissection/Assembly)
-- [ ] BootScene 구축: BootLoader로 GameRoot 초기화 후 다음 씬 이동
-- [ ] GameRoot 프리팹화: BootScene에 배치(자동 생성 금지 정책 유지)
-- [ ] 전역 초기화 규칙 정리: Start 의존 금지, InitializeIfNeeded()로 통일
-- [ ] Build Settings 씬 등록: Boot/Title/Lobby/각 게임 씬
+- [V] 씬 플로우 확정: BootScene → TitleScene → LobbyScene → (Battle/Analysis/Dissection/Assembly)
+- [V] BootScene 구축: BootLoader로 GameRoot 초기화 후 다음 씬 이동
+- [V] GameRoot 프리팹화: BootScene에 배치(자동 생성 금지 정책 유지)
+- [V] 전역 초기화 규칙 정리: Start 의존 금지, InitializeIfNeeded()로 통일
+- [V] Build Settings 씬 등록: Boot/Title/Lobby/각 게임 씬
 
 [B] 데이터/저장(컨셉상 필수)
 - [ ] 옵션 저장: 그래픽/사운드/조작(카메라 감도 포함)
