@@ -17,10 +17,12 @@ public class GameRoot : Singleton<GameRoot>
     /// <summary>GameRoot는 자동 생성 금지(프리팹/씬 배치 강제).</summary>
     static GameRoot()
     {
-        ConfigureSingleton(
-            allowAutoCreate: false,
-            autoCreatedObjectName: "[GameRoot]",
-            persistAcrossScenes: true);
+        ConfigureSingleton
+            (
+                allowAutoCreate: false,
+                autoCreatedObjectName: "[GameRoot]",
+                persistAcrossScenes: true
+            );
     }
 
     //--------------------------------------------------------------------------
@@ -49,8 +51,7 @@ public class GameRoot : Singleton<GameRoot>
     /// <summary>BootLoader가 호출하는 전역 초기화(안전하게 1회만 동작).</summary>
     public void InitializeIfNeeded()
     {
-        if (_isInitialized)
-            return;
+        if (_isInitialized) return;
 
         _isInitialized = true;
 
@@ -68,9 +69,6 @@ public class GameRoot : Singleton<GameRoot>
     //--------------------------------------------------------------------------
 
     /// <summary>Start에 초기화 로직을 두지 않습니다.</summary>
-    private void Start()
-    {
-        // 의도적으로 비워둡니다.
-    }
+    private void Start() { }
 }
 
