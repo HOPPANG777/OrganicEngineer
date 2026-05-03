@@ -1,4 +1,8 @@
 using UnityEngine;
+using Sirenix.OdinInspector;
+using System.Collections.Generic;
+using UnityEngine.SceneManagement;
+using System;
 
 //==============================================================================
 // SceneFlowController: Scene 전환 시 효과
@@ -10,19 +14,46 @@ using UnityEngine;
 
 public class SceneFlowController : MonoBehaviour
 {
+    [TabGroup("FadeEffect")]
+    [SerializeField]
+    [Tooltip("페이드 효과 컨트롤러")] private FadeEffectController _fadeEffect;  // 페이드 효과 컨트롤러
 
+    [TabGroup("Loading")]
+    [SerializeField]
+    [Tooltip("로딩 패널")] private GameObject _loadingPanel;    // 씬을 로딩할때 화면을 가리는 용도
+
+    [TabGroup("Scene")]
+    [SerializeField]
+    [Tooltip("씬 리스트")] private List<string> _scenesList; // 씬 리스트
+    [TabGroup("Scene")]
+    [SerializeField]
+    [Tooltip("현재 씬")] private string _currentScene; // 현재 씬
+    [TabGroup("Scene")]
+    [SerializeField]
+    [Tooltip("다음 씬")] private string _nextScene; // 다음 씬
+    
+    // 씬을 로드합니다.   
     void Load()
     {
 
     }
 
+    // 씬을 다시 로드합니다.
     void Reload()
     {
 
     }
 
-    void Quit()
+    // 다음 씬으로 넘어감
+    public void NextScene(string sceneName)
     {
 
     }
+    
+    // 현재 씬 이름 입력
+    public void CurrentScene(string sceneName)
+    {
+        _currentScene = sceneName;
+    }
+    
 }

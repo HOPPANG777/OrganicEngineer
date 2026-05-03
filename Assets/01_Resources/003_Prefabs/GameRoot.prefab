@@ -107,6 +107,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameRoot
   _controllersRoot: {fileID: 6136956329687767155}
+  _sceneFlowController: {fileID: 8724459897265697657}
   _isInitialized: 0
 --- !u!1 &2987656437910242498
 GameObject:
@@ -152,6 +153,18 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 26899cc902ceeb0489d0ea4e789eb349, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SceneFlowController
+  _fadeEffect: {fileID: 7657197481419292652}
+  _loadingPanel: {fileID: 3159537163470779937}
+  _scenesList:
+  - BootScene
+  - TitleScene
+  - LobbyScene
+  - GameBattleScene
+  - GameDissectionScene
+  - GameAssemblyScene
+  - GameAnalysisScene
+  _currentScene: 
+  _nextScene: 
 --- !u!1 &3097803900718945293
 GameObject:
   m_ObjectHideFlags: 0

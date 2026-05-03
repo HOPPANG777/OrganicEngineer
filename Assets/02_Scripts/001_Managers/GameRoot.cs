@@ -1,3 +1,4 @@
+using Sirenix.OdinInspector;
 using UnityEngine;
 
 //==============================================================================
@@ -30,14 +31,21 @@ public class GameRoot : Singleton<GameRoot>
     //--------------------------------------------------------------------------
 
     /// <summary>컨트롤러/팩토리를 프리팹으로 붙여두는 루트.</summary>
-    [SerializeField]
+    [TabGroup("GameRoot")]
+    [SerializeField] 
     private Transform _controllersRoot;
+
+    [TabGroup("Management Controller")]
+    [SerializeField] 
+    private SceneFlowController _sceneFlowController;
+    public SceneFlowController SceneFlow { get => _sceneFlowController; set => _sceneFlowController = value; }
 
     //--------------------------------------------------------------------------
     // [2] 초기화 상태
     //--------------------------------------------------------------------------
 
     /// <summary>전역 초기화가 끝났는지 여부(1회 보장).</summary>
+    [TabGroup("GameRoot")]
     [SerializeField]
     private bool _isInitialized;
 
@@ -58,10 +66,9 @@ public class GameRoot : Singleton<GameRoot>
         // 환경 설정
         Application.targetFrameRate = 60;
 
-        if (_controllersRoot == null)
-        {
-            Debug.LogWarning("[GameRoot] ControllersRoot가 없습니다.");
-        }
+        if (_controllersRoot == null) Debug.LogWarning("[GameRoot] ControllersRoot가 없습니다.");
+        if (_sceneFlowController == null) Debug.LogWarning("[GameRoot] SceneFlowController가 없습니다.");
+        
     }
 
     //--------------------------------------------------------------------------

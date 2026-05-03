@@ -31,8 +31,7 @@ public class BootLoader : MonoBehaviour
         // GameRoot는 자동 생성 금지이므로 BootScene에 반드시 배치되어 있어야 합니다.
         if (!GameRoot.TryGetInstance(out GameRoot root) || root == null)
         {
-            Debug.LogError(
-                "[BootLoader] GameRoot를 찾지 못했습니다. BootScene에 GameRoot를 배치하세요.");
+            Debug.LogError("[BootLoader] GameRoot를 찾지 못했습니다. BootScene에 GameRoot를 배치하세요.");
             return;
         }
 
@@ -50,10 +49,14 @@ public class BootLoader : MonoBehaviour
     /// <summary>다음 씬 로드(중복 방지).</summary>
     private void RequestLoadNextScene()
     {
-        if (_requestedSceneLoad)
-            return;
+        // 이미 BootScene을 벗어났다면 리턴
+        if (_requestedSceneLoad) return;
 
+        // 아니라면 이미 매니지먼트 컨트롤러 로딩 끝났으니까 트루로 바꾸고
         _requestedSceneLoad = true;
+
+        // SceneFlow 컨트롤러에 현재 씬 이름 입력하고
+        GameRoot.Instance.SceneFlow.CurrentScene(_nextSceneName);
 
         // 단순 동기 로드(필요해지면 Async로 확장)
         SceneManager.LoadScene(_nextSceneName);
