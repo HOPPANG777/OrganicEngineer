@@ -427,7 +427,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 28dbaada506473c48b9743a12b566b87, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BootLoader
-  _nextSceneName: TitleScene
+  _nextSceneConfig: {fileID: 11400000, guid: b0de83da57af9d54f8bc5ef85e0c1bbc, type: 2}
 --- !u!1001 &1561077119473424684
 PrefabInstance:
   m_ObjectHideFlags: 0

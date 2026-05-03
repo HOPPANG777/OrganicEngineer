@@ -66,7 +66,7 @@ Day 1: 부팅/전역 루트 고정
 
 Day 2: SceneFlow(씬 전환) + 페이드
 - [ ] SceneFlowController(프리팹 부착): Load/Reload/Quit
-- [ ] 전환 연출: 페이드 인/아웃(로딩 텍스트 최소)
+- [V] 전환 연출: 페이드 인/아웃(로딩 텍스트 최소)
 - [ ] Title → Lobby 전환: 버튼 클릭 시 SceneFlowController로 이동
 
 Day 3: Settings(옵션) 데이터/저장/적용

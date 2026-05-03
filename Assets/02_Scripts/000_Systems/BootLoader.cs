@@ -14,9 +14,9 @@ public class BootLoader : MonoBehaviour
     // [1] 다음 씬 설정
     //--------------------------------------------------------------------------
 
-    /// <summary>초기화 후 이동할 씬 이름.</summary>
+    /// <summary>초기화 후 이동할 씬.</summary>
     [SerializeField]
-    private string _nextSceneName = "TitleScene";
+    private SceneListConfig _nextSceneConfig;
 
     /// <summary>씬 로드 중복 방지.</summary>
     private bool _requestedSceneLoad;
@@ -56,10 +56,10 @@ public class BootLoader : MonoBehaviour
         _requestedSceneLoad = true;
 
         // SceneFlow 컨트롤러에 현재 씬 이름 입력하고
-        GameRoot.Instance.SceneFlow.CurrentScene(_nextSceneName);
+        GameRoot.Instance.SceneFlow.CurrentScene(_nextSceneConfig);
 
         // 단순 동기 로드(필요해지면 Async로 확장)
-        SceneManager.LoadScene(_nextSceneName);
+        SceneManager.LoadScene(_nextSceneConfig.SceneName);
     }
 }
 

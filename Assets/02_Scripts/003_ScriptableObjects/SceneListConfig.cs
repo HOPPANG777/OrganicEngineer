@@ -9,12 +9,11 @@ using Sirenix.OdinInspector;
 //
 //==============================================================================
 
-[CreateAssetMenu(fileName = "OrganicEngineer/Scene List Config", menuName = "SceneListConfig")]
+[CreateAssetMenu(menuName = "OrganicEngineer/Scene List Config", fileName = "SceneListConfig")]
 public class SceneListConfig : ScriptableObject
 {
     [TabGroup("Scene Config")]
-    [SerializeField]
     [Tooltip("씬에 이름")]
-    private string _sceneName;
-    public string SceneName { get => SceneName; }
+    [SerializeField] private string _sceneName;
+    public string SceneName { get => _sceneName; }
 }

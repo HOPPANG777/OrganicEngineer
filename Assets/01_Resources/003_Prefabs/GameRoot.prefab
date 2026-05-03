@@ -154,17 +154,22 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SceneFlowController
   _fadeEffect: {fileID: 7657197481419292652}
+  _fadeConfig: {fileID: 11400000, guid: a6e4039ca6a00c249969ec6a022b6ad8, type: 2}
   _loadingPanel: {fileID: 3159537163470779937}
   _scenesList:
-  - BootScene
-  - TitleScene
-  - LobbyScene
-  - GameBattleScene
-  - GameDissectionScene
-  - GameAssemblyScene
-  - GameAnalysisScene
-  _currentScene: 
-  _nextScene: 
+  - {fileID: 11400000, guid: e0e1ff193b280844abaf3f4b654e76f4, type: 2}
+  - {fileID: 11400000, guid: b0de83da57af9d54f8bc5ef85e0c1bbc, type: 2}
+  - {fileID: 11400000, guid: b46db4a409f8fe44e9c78376eb5fc931, type: 2}
+  - {fileID: 11400000, guid: 9573548b7714e834b95f0675eb94a830, type: 2}
+  - {fileID: 11400000, guid: 6003d76da6507e1428325dbb4c7b79ad, type: 2}
+  - {fileID: 11400000, guid: a0270d36b0627c247a845070e4d0d792, type: 2}
+  - {fileID: 11400000, guid: 00fee2bc38a1ef14080a67ffc31904c6, type: 2}
+  - {fileID: 11400000, guid: a96b86fbe3834f441b16eb4ccd15d971, type: 2}
+  _currentScene: {fileID: 0}
+  _nextScene: {fileID: 0}
+  _isSceneLoading: 0
+  _loadState: 0
+  _stateElapsed: 0
 --- !u!1 &3097803900718945293
 GameObject:
   m_ObjectHideFlags: 0

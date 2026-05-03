@@ -162,6 +162,7 @@ GameObject:
   - component: {fileID: 202932714}
   - component: {fileID: 202932713}
   - component: {fileID: 202932712}
+  - component: {fileID: 202932716}
   m_Layer: 5
   m_Name: TitleScreenCanvas
   m_TagString: Untagged
@@ -185,7 +186,7 @@ MonoBehaviour:
   m_BlockingObjects: 0
   m_BlockingMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 55
 --- !u!114 &202932713
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -258,6 +259,35 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!114 &202932716
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 202932711}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f3521a654c47824892a8e8e9f179653, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TitleScreenController
+  serializationData:
+    SerializedFormat: 2
+    SerializedBytes: 
+    ReferencedUnityObjects: []
+    SerializedBytesString: 
+    Prefab: {fileID: 0}
+    PrefabModificationsReferencedUnityObjects: []
+    PrefabModifications: []
+    SerializationNodes: []
+  _continueButton: {fileID: 1580229263}
+  _newGameButton: {fileID: 254115421}
+  _settingButton: {fileID: 388047264}
+  _creditsButton: {fileID: 1901454751}
+  _quitButton: {fileID: 1620817672}
+  _continueNextScene: {fileID: 11400000, guid: b46db4a409f8fe44e9c78376eb5fc931, type: 2}
+  _newGameNextScene: {fileID: 11400000, guid: b46db4a409f8fe44e9c78376eb5fc931, type: 2}
+  _creditsNextScene: {fileID: 11400000, guid: a96b86fbe3834f441b16eb4ccd15d971, type: 2}
 --- !u!1 &254115419
 GameObject:
   m_ObjectHideFlags: 0
