@@ -65,9 +65,9 @@ Day 1: 부팅/전역 루트 고정
 - [V] 씬 등록: Build Settings에 BootScene/TitleScene/LobbyScene 등록
 
 Day 2: SceneFlow(씬 전환) + 페이드
-- [ ] SceneFlowController(프리팹 부착): Load/Reload/Quit
+- [V] SceneFlowController(프리팹 부착): Load/Reload/Quit
 - [V] 전환 연출: 페이드 인/아웃(로딩 텍스트 최소)
-- [ ] Title → Lobby 전환: 버튼 클릭 시 SceneFlowController로 이동
+- [V] Title → Lobby 전환: 버튼 클릭 시 SceneFlowController로 이동
 
 Day 3: Settings(옵션) 데이터/저장/적용
 - [ ] SettingsData 설계: 그래픽/오디오/카메라 감도(최소)
@@ -84,6 +84,7 @@ Day 5: UI 골격 + 더미 씬 연결
 - [ ] Title UI: Continue/New/Settings/Quit
   - [ ] Continue 조건: 세이브 없으면 비활성
   - [ ] New Game 확인: 덮어쓰기 경고
+  - [ ] 그리고 세이브 파일 선택지 고르게 하기
 - [ ] Lobby UI: 전투/분석/해체/조립 버튼
 - [ ] 씬 연결만 먼저: 버튼 → SceneFlowController.Load("GameBattleScene") 형태
 - [ ] 기본 UX: 버튼 사운드, 포커스 이동
