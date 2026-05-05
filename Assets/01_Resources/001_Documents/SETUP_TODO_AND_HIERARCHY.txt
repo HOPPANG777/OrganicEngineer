@@ -21,7 +21,7 @@ OrganicEngineer - 구축 ToDo / 주간 구현 순서 / 하이어라키
 - [V] Build Settings 씬 등록: Boot/Title/Lobby/각 게임 씬
 
 [B] 데이터/저장(컨셉상 필수)
-- [ ] 옵션 저장: 그래픽/사운드/조작(카메라 감도 포함)
+- [V] 옵션 저장: 그래픽/사운드/조작(카메라 감도 포함)
 - [ ] 진행도 저장 구조: 도감 해금/달성도 등 기본 필드 설계
 - [ ] 전투 로그 저장 구조: 최근 N개 저장 + 조회 메타(시간/상대/결과/요약)
 
@@ -70,9 +70,9 @@ Day 2: SceneFlow(씬 전환) + 페이드
 - [V] Title → Lobby 전환: 버튼 클릭 시 SceneFlowController로 이동
 
 Day 3: Settings(옵션) 데이터/저장/적용
-- [ ] SettingsData 설계: 그래픽/오디오/카메라 감도(최소)
+- [V] SettingsData 설계: 그래픽/오디오/카메라 감도(최소)
 - [ ] SaveController(프리팹 부착): 로드/세이브(버전 포함)
-- [ ] SettingsController(프리팹 부착): 로드→적용, Apply/Cancel/Default
+- [V] SettingsController(프리팹 부착): 로드→적용, Apply/Cancel/Default
 
 Day 4: Input(입력) + 카메라 기본 Feel
 - [ ] InputController(프리팹 부착): UI + 3D 회전/팬/줌 액션

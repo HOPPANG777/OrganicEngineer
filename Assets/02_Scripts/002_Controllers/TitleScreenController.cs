@@ -59,8 +59,10 @@ public class TitleScreenController : SerializedMonoBehaviour
 
         _creditsButton.onClick.AddListener(OnClickCredits);
 
-        _quitButton.onClick.AddListener(OnClickQuit);   
-        // _settingButton 은 보통 팝업이라 SceneFlow 호출 안 함
+        _quitButton.onClick.AddListener(OnClickQuit);
+
+        // 설정 버튼: SceneFlow 대신 GameRoot의 OptionsScreen을 띄움(팝업)
+        if (_settingButton != null) _settingButton.onClick.AddListener(OnClickSetting);
     }
 
     //--------------------------------------------------------------------------
@@ -80,6 +82,19 @@ public class TitleScreenController : SerializedMonoBehaviour
 #else
         Application.Quit();
 #endif
+    }
+
+    /// <summary>설정 버튼: GameRoot의 OptionsScreen을 연다(팝업).</summary>
+    private void OnClickSetting()
+    {
+        OptionsScreenController options = GameRoot.Instance != null ? GameRoot.Instance.Options : null;
+        if (options == null)
+        {
+            Debug.LogWarning("[TitleScreen] OptionsScreen이 GameRoot에 연결되어 있지 않습니다.");
+            return;
+        }
+
+        options.Open();
     }
 
     //--------------------------------------------------------------------------

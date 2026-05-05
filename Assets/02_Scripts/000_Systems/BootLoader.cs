@@ -1,3 +1,5 @@
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -5,7 +7,7 @@ using UnityEngine.SceneManagement;
 // BootLoader: BootScene 진입 스크립트
 //==============================================================================
 // - 씬에 배치된 GameRoot를 찾고 초기화 호출
-// - 초기화 후 다음 씬으로 이동
+// - 설정(Settings) 로드 + 적용 → 다음 씬으로 이동
 //==============================================================================
 
 public class BootLoader : MonoBehaviour
@@ -25,8 +27,21 @@ public class BootLoader : MonoBehaviour
     // [2] Unity 생명주기
     //--------------------------------------------------------------------------
 
-    /// <summary>BootScene 진입 시 GameRoot 초기화 후 씬 전환.</summary>
+    /// <summary>BootScene 진입 시 비동기 부트 시퀀스 시작.</summary>
     private void Awake()
+    {
+        BootAsync(this.GetCancellationTokenOnDestroy()).Forget();
+    }
+
+    //--------------------------------------------------------------------------
+    // [3] 부트 시퀀스 (비동기)
+    //--------------------------------------------------------------------------
+
+    /*
+     * @brief GameRoot 초기화 → 설정 로드/적용 → 다음 씬 전환
+     * @param ct 취소 토큰(GameObject 파괴 시 자동 취소)
+     */
+    private async UniTaskVoid BootAsync(CancellationToken ct)
     {
         // GameRoot는 자동 생성 금지이므로 BootScene에 반드시 배치되어 있어야 합니다.
         if (!GameRoot.TryGetInstance(out GameRoot root) || root == null)
@@ -38,12 +53,18 @@ public class BootLoader : MonoBehaviour
         // 전역 초기화
         root.InitializeIfNeeded();
 
+        // 설정 로드 + 적용 (파일 I/O이므로 비동기)
+        if (root.Settings != null)
+        {
+            await root.Settings.LoadAndApplyAsync(ct);
+        }
+
         // 씬 전환
         RequestLoadNextScene();
     }
 
     //--------------------------------------------------------------------------
-    // [3] 씬 전환
+    // [4] 씬 전환
     //--------------------------------------------------------------------------
 
     /// <summary>다음 씬 로드(중복 방지).</summary>
@@ -62,4 +83,3 @@ public class BootLoader : MonoBehaviour
         SceneManager.LoadScene(_nextSceneConfig.SceneName);
     }
 }
-

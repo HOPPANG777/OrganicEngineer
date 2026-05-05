@@ -49,6 +49,8 @@ MonoBehaviour:
     m_path: Assets/00_Scenes/GameAssemblyScene.unity
   - m_enabled: 1
     m_path: Assets/00_Scenes/GameAnalysisScene.unity
+  - m_enabled: 1
+    m_path: Assets/00_Scenes/CreditsScene.unity
   m_HasScriptingDefines: 1
   m_ScriptingDefines: []
   m_PlayerSettingsYaml:

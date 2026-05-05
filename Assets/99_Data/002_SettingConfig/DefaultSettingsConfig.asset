@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 94b62feca9721da46933a7862ed4da37, type: 3}
+  m_Name: DefaultSettingsConfig
+  m_EditorClassIdentifier: Assembly-CSharp::SettingsConfig
+  _defaultQualityLevel: 2
+  _defaultScreenMode: 2
+  _defaultTargetFrameRate: 60
+  _defaultVSync: 0
+  _defaultAntiAliasing: 1
+  _defaultShadowLevel: 3
+  _defaultTextureLevel: 2
+  _defaultBrightness: 1
+  _brightnessMin: 0.5
+  _brightnessMax: 1.5
+  _defaultMasterVolume: 1
+  _defaultBgmVolume: 1
+  _defaultSfxVolume: 1
+  _defaultVoiceVolume: 1
+  _defaultUiVolume: 1
+  _defaultAmbientVolume: 1
+  _defaultMute: 0
+  _defaultMuteOnFocusLost: 1
+  _defaultSensitivityX: 1
+  _defaultSensitivityY: 1
+  _sensitivityMin: 0.1
+  _sensitivityMax: 5
+  _defaultAimSensitivityMultiplier: 0.5
+  _defaultInvertX: 0
+  _defaultInvertY: 0
+  _defaultMouseSmoothing: 0
+  _defaultLanguage: ko
+  _defaultDifficulty: 1
+  _defaultShowFps: 0

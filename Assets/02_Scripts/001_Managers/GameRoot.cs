@@ -40,6 +40,16 @@ public class GameRoot : Singleton<GameRoot>
     private SceneFlowController _sceneFlowController;
     public SceneFlowController SceneFlow { get => _sceneFlowController; set => _sceneFlowController = value; }
 
+    [TabGroup("Management Controller")]
+    [SerializeField]
+    private SettingsController _settingsController;
+    public SettingsController Settings { get => _settingsController; set => _settingsController = value; }
+
+    [TabGroup("Management Controller")]
+    [SerializeField]
+    private OptionsScreenController _optionsScreen;
+    public OptionsScreenController Options { get => _optionsScreen; set => _optionsScreen = value; }
+
     //--------------------------------------------------------------------------
     // [2] 초기화 상태
     //--------------------------------------------------------------------------
@@ -68,7 +78,8 @@ public class GameRoot : Singleton<GameRoot>
 
         if (_controllersRoot == null) Debug.LogWarning("[GameRoot] ControllersRoot가 없습니다.");
         if (_sceneFlowController == null) Debug.LogWarning("[GameRoot] SceneFlowController가 없습니다.");
-        
+        if (_settingsController == null) Debug.LogWarning("[GameRoot] SettingsController가 없습니다.");
+        if (_optionsScreen == null) Debug.LogWarning("[GameRoot] OptionsScreen이 없습니다.");
     }
 
     //--------------------------------------------------------------------------

@@ -156,7 +156,7 @@ public class SceneFlowController : MonoBehaviour
 
         // 비동기 씬 로드 시작 (활성화는 직접 제어)
         _loadOp = SceneManager.LoadSceneAsync(_nextScene.SceneName);
-        _loadOp.allowSceneActivation = false;
+        _loadOp.allowSceneActivation = false;   
     }
 
     // 씬을 다시 로드합니다.
