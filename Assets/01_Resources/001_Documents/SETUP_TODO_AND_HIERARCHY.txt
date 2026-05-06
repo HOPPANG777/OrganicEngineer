@@ -5,155 +5,201 @@ OrganicEngineer - 구축 ToDo / 주간 구현 순서 / 하이어라키
 ============================================================
 - 전역 루트는 GameRoot 1개만 사용
 - GameRoot는 자동 생성 금지(반드시 프리팹/씬 배치)
-- 컨트롤러/팩토리는 생성하지 않고 GameRoot 하위에 “프리팹으로 붙여둠”
+- 컨트롤러/팩토리는 생성하지 않고 GameRoot 하위에 "프리팹으로 붙여둠"
 - 전역 초기화는 Start에 두지 않고 BootScene의 BootLoader가 GameRoot.InitializeIfNeeded()를 호출
+- 마커: [V] 완료 / [ ] 대기 / [~] 진행중 / [B] 시스템 기획 대기(Blocked)
 
 
 ============================================================
-1) ToDo List (게임 시스템 구현 전, 3D 기준 우선순위)
+1) ToDo List
 ============================================================
 
-[A] 프로젝트 뼈대(가장 먼저)
+[A] 프로젝트 뼈대 — 완료
 - [V] 씬 플로우 확정: BootScene → TitleScene → LobbyScene → (Battle/Analysis/Dissection/Assembly)
 - [V] BootScene 구축: BootLoader로 GameRoot 초기화 후 다음 씬 이동
 - [V] GameRoot 프리팹화: BootScene에 배치(자동 생성 금지 정책 유지)
 - [V] 전역 초기화 규칙 정리: Start 의존 금지, InitializeIfNeeded()로 통일
 - [V] Build Settings 씬 등록: Boot/Title/Lobby/각 게임 씬
 
-[B] 데이터/저장(컨셉상 필수)
-- [V] 옵션 저장: 그래픽/사운드/조작(카메라 감도 포함)
-- [ ] 진행도 저장 구조: 도감 해금/달성도 등 기본 필드 설계
-- [ ] 전투 로그 저장 구조: 최근 N개 저장 + 조회 메타(시간/상대/결과/요약)
-
-[C] 3D 전환 핵심 기반
-- [ ] 렌더 파이프라인 결정: URP/HDRP 선택 및 프로젝트 세팅 고정
-- [ ] 룩/톤 가이드: 라이트/포스트프로세싱/아웃라인·셀셰이딩 여부
-- [ ] 아트 규격 정의: 스케일(1u=1m), 피벗, LOD, 콜라이더, 머티리얼 규칙
-- [ ] 카메라 시스템: Title/Lobby/작업(해체·조립) 프리셋 구성(예: Cinemachine)
-
-[D] 입력/조작(Feel)
-- [ ] Input System 세팅: UI 입력 + 3D 뷰 조작(회전/팬/줌)
-- [ ] UI 네비게이션: 키보드/패드/마우스 포커스 이동 일관성
-
-[E] UI(타이틀/세팅부터)
-- [ ] TitleScene UI: Continue/New/Settings/Quit + 전환(페이드)
-- [ ] Settings UI
-  - [ ] Graphics: 해상도/전체화면/VSync/FPS/품질/그림자/AA
-  - [ ] Audio: Master/BGM/SFX/UI 슬라이더 + 미리듣기
-  - [ ] Controls: 카메라 감도/키바인딩(구조라도)
-- [ ] 설정 적용 구조: SettingsData ↔ Applier ↔ UI Binder 분리
-
-[F] 3D에서 특히 먼저 결정해야 하는 위험 영역(갈아엎기 방지)
-- [ ] 부위(파트) 시스템 표현 방식 결정: 모듈 파츠(추천) vs 실제 메쉬 절개(고난도)
-- [ ] 부위 ID 매핑 규칙: 파츠/본/콜라이더/도감 UI 클릭 하이라이트 연결
-- [ ] 부위 파괴/상태 연출 규칙: 비활성/머티리얼 변화/이펙트 기준
-
-[G] “게임처럼 돌아가는” 수직 슬라이스(시스템 없이 흐름만)
-- [ ] 로비 씬 1개: 카메라/입력/사운드까지 연결
-- [ ] 버튼으로 씬 이동: Battle/Analysis/Dissection/Assembly는 더미 UI로 연결만
-- [ ] 간단한 로딩/전환 연출: 페이드/로딩 텍스트 수준부터
-
-
-============================================================
-2) 이번 주 구현 순서(수직 슬라이스 기준)
-============================================================
-
-Day 1: 부팅/전역 루트 고정
-- [V] BootScene 정리: BootLoader만 두고 최소 구성 유지
-- [V] GameRoot 프리팹 생성: BootScene에 배치(자동 생성 금지 정책 유지)
-- [V] 전역 초기화 진입점 고정: GameRoot.InitializeIfNeeded()만 통해 초기화
-- [V] 씬 등록: Build Settings에 BootScene/TitleScene/LobbyScene 등록
-
-Day 2: SceneFlow(씬 전환) + 페이드
-- [V] SceneFlowController(프리팹 부착): Load/Reload/Quit
-- [V] 전환 연출: 페이드 인/아웃(로딩 텍스트 최소)
+[B] Settings(옵션) — 완료
+- [V] SettingsData / SettingsConfig(SO) 설계 + 스키마 버전/마이그레이션
+- [V] SettingsController: 로드 → 적용 → 저장(persistentDataPath/settings.json)
+- [V] 서브 컨트롤러: Graphics / Audio / Camera / Gameplay
+- [V] Options UI: 탭(Graphics/Audio/Camera/Gameplay) + Apply / Cancel / Reset
+- [V] SceneFlowController(프리팹 부착): Load/Reload/Quit + 페이드 인/아웃
 - [V] Title → Lobby 전환: 버튼 클릭 시 SceneFlowController로 이동
 
-Day 3: Settings(옵션) 데이터/저장/적용
-- [V] SettingsData 설계: 그래픽/오디오/카메라 감도(최소)
-- [ ] SaveController(프리팹 부착): 로드/세이브(버전 포함)
-- [V] SettingsController(프리팹 부착): 로드→적용, Apply/Cancel/Default
+[C] 시스템 기획 대기 (지금은 손대지 말 것)
+- [B] 데이터/저장 - 진행도 저장 구조: 게임 핵심 시스템 미정 → 저장할 필드 결정 불가
+- [B] 데이터/저장 - 전투 로그 저장 구조: 전투 시스템 미정
+- [B] 카메라 시스템 (Title/Lobby/작업 프리셋): 씬 구성/조작 방식 미정
+- [B] Input System 액션 맵: 게임 조작 미정
+- [B] Controls 옵션 - 키바인딩: 액션 맵 확정 후 가능
+- [B] 난이도 시스템 도입 여부: 게임 코어 미정 → 도입/비도입 결정 필요
+        (현재 Options UI는 NORMAL 1개로 뼈대만 유지. 데이터 enum은 EASY/NORMAL/HARD 보존)
+- [B] 부위(파트) 시스템 표현 방식: 모듈 파츠 vs 메쉬 절개 결정 필요
+- [B] 부위 ID 매핑 / 파괴 연출 규칙: 위 결정 후
+- [B] 렌더 파이프라인 결정(URP/HDRP) + 룩/톤 가이드: 아트 방향 결정 필요
+- [B] 아트 규격(스케일/피벗/LOD/머티리얼): 아트 방향 결정 필요
 
-Day 4: Input(입력) + 카메라 기본 Feel
-- [ ] InputController(프리팹 부착): UI + 3D 회전/팬/줌 액션
-- [ ] 카메라 프리셋: Title 고정, Lobby 오빗, 작업(해체/조립) 프로토타입
-- [ ] Controls 옵션 연결: 감도 슬라이더 즉시 적용
+[D] 지금 진행 가능한 부가 기능 (시스템 무관, 우선순위 순)
 
-Day 5: UI 골격 + 더미 씬 연결
-- [ ] UIRoot 프리팹: Canvas 스케일러, 기본 스타일
-- [ ] Title UI: Continue/New/Settings/Quit
-  - [ ] Continue 조건: 세이브 없으면 비활성
-  - [ ] New Game 확인: 덮어쓰기 경고
-  - [ ] 그리고 세이브 파일 선택지 고르게 하기
-- [ ] Lobby UI: 전투/분석/해체/조립 버튼
-- [ ] 씬 연결만 먼저: 버튼 → SceneFlowController.Load("GameBattleScene") 형태
-- [ ] 기본 UX: 버튼 사운드, 포커스 이동
+  D-1. UI 공통 인프라 (최우선)
+  - [ ] PopupController: 확인/경고 다이얼로그 (Yes/No, OK 패턴)
+  - [ ] ToastController: 짧은 알림 (위치/지속시간 옵션)
+  - [ ] _UIRoot 프리팹 정비: PopupRoot / ToastRoot 채우기
+  - [ ] 모달 스택 처리: 여러 팝업 중첩 시 ESC는 가장 위만 닫기
+  - [ ] 공통 버튼/슬라이더 스타일 프리팹(이름·여백·폰트 통일)
 
-Day 6: Save/Log 기반 최소 완성(컨셉 핵심)
-- [ ] 전투 로그 모델(최소): 전투ID/시간/상대ID/결과/요약
-- [ ] 로그 저장/조회: 최근 N개 + 리스트 화면(임시 UI 가능)
-- [ ] 도감/해금 진행도(최소): 발견/해금/달성도 placeholder
-- [ ] Title Continue가 저장 데이터 기반으로 동작
+  D-2. AudioController (Settings.Audio가 실제로 들리도록)
+  - [ ] AudioMixer 에셋 + 6채널(Master/BGM/SFX/Voice/UI/Ambient) Expose 파라미터 정합 확인
+  - [ ] AudioController(GameRoot 자식 프리팹): SFX 원샷 풀 + BGM 크로스페이드
+  - [ ] UIButtonSound 컴포넌트: 버튼에 붙이면 클릭/호버 자동 재생
+  - [ ] 씬 전환 시 BGM 자동 처리(SceneFlow 연동)
 
-Day 7: 3D “부위(파트) 규칙” 확정 + 작업 카메라 프로토타입
-- [ ] 파트 구성 방식 결정(추천: 모듈 파츠)
-- [ ] 부위 ID/콜라이더/UI 하이라이트 매핑 규칙 확정
-- [ ] 작업 카메라 완성: 회전/팬/줌 + 선택 하이라이트 최소 구현
-- [ ] 더미 프리팹 1개로 “부위 선택 → 정보 표시” 흐름 검증
+  D-3. Localization 프레임워크 골격 (뼈대만, 다국어 추가는 보류)
+  - 현재 정책: 언어 드롭다운은 한국어 1개만 유지. 새 언어 추가는
+    실제 번역 컨텐츠가 준비된 시점에 진행한다.
+  - [ ] LocaleController: Get(key) / OnLanguageChanged 이벤트
+  - [ ] StringTable(SO): 언어 코드별 키-값 (지금은 ko만 존재해도 OK)
+  - [ ] LocalizedText 컴포넌트: TMP_Text에 붙여 키 swap
+  - [ ] SettingsController.OnSettingsApplied 구독해 hot-swap
+  - [B] 신규 언어 추가: 컨텐츠/폰트 SDF 글리프 준비 후 진행
+        (GameplayOptionsTabController의 LANGUAGE_CODES/LABELS에 같은 인덱스로 append)
+
+  D-4. TitleScreen 마무리
+  - [ ] Settings 버튼 → GameRoot.Instance.Options.Open()
+  - [ ] Quit 버튼 → Popup(D-1) 확인 후 Application.Quit()
+  - [ ] Continue 버튼: ISaveProvider.HasAnySave 인터페이스만 정의 후 비활성 처리(실 구현은 D-8 후)
+  - [ ] VersionText: Application.version 우측 하단 표시
+  - [ ] New Game 덮어쓰기 경고 Popup(D-1)
+  - [ ] 진입 시 페이드 인
+
+  D-5. Pause Menu (게임 씬 공통)
+  - [ ] PauseMenuController: Resume / Settings / Title로 / Quit
+  - [ ] Time.timeScale 0 + AudioListener.pause 처리
+  - [ ] ESC 토글: 옵션 화면이 떠있을 땐 옵션 우선 처리
+  - [ ] 게임 씬 공통 프리팹화 (어떤 게임 씬에서도 동일 동작)
+
+  D-6. 디버그 인프라
+  - [ ] FpsCounterView: SettingsData.Gameplay.ShowFps 구독해 토글
+  - [ ] RuntimeLogToFile: Application.logMessageReceived 후킹 → persistentDataPath/logs/*.log 누적
+  - [ ] VersionInfoView: 빌드 버전/날짜 표시 (디버그 빌드 한정 옵션)
+  - [ ] (선택) DebugConsole: 백쿼트(`) 토글 + 단순 명령 입력
+
+  D-7. SceneFlow 전환 연출 강화
+  - [ ] AsyncLoad 변경 + 진행도 슬라이더 표시
+  - [ ] LoadingTipsConfig(SO): 랜덤 팁 표시
+  - [ ] 최소 표시 시간 보장(체감 깜빡임 방지)
+
+  D-8. Save 슬롯 아키텍처 (껍데기만, 실 데이터는 비움)
+  - [ ] ISaveable 인터페이스: Serialize() / Deserialize(json) / SaveKey
+  - [ ] SaveController(GameRoot 자식): N개 슬롯 관리 + 메타(시간/플레이타임/씬 위치)
+  - [ ] 슬롯 메타데이터 SO + JSON 저장 경로 분리(saves/slot_<n>.json + meta)
+  - [ ] 슬롯 선택 UI (Title의 New/Continue가 이 위에서 동작)
+  - [ ] 실제 게임 데이터 ISaveable 구현체는 [C] 해제 후
 
 
 ============================================================
-3) 하이어라키 추천(프리팹/씬 구성)
+2) 앞으로의 구현 순서 (시스템 기획 전까지)
+============================================================
+
+Week 1: UI 인프라 + Audio (체감이 가장 빠른 곳부터)
+- [ ] D-1 UI 공통 인프라 (Popup / Toast / _UIRoot)
+- [ ] D-2 AudioController + AudioMixer + UIButtonSound
+  → 이 시점부터 옵션의 "사운드 슬라이더 + 버튼 클릭음"이 비로소 검증 가능
+
+Week 2: TitleScreen 마무리 + Pause + 디버그
+- [ ] D-4 TitleScreen 마무리 (Settings / Quit / Version / New 경고)
+- [ ] D-5 Pause Menu
+- [ ] D-6 디버그 인프라 (FPS / 로그 파일 / 버전 표시)
+  → 사용자가 쓰는 입구(Title)와 운영자 도구가 갖춰짐
+
+Week 3: Localization + SceneFlow 강화 + Save 골격
+- [ ] D-3 Localization 프레임워크 + 일본어 글리프 정리
+- [ ] D-7 SceneFlow 전환 연출 강화 (Async + 팁)
+- [ ] D-8 Save 슬롯 아키텍처(껍데기)
+  → 게임 시스템이 결정되면 즉시 끼워넣을 수 있는 상태가 됨
+
+이후 (시스템 기획 확정 후):
+- 카메라 프리셋 → Input 액션 맵 → 부위 시스템 → 진행도/전투 로그 저장
+  순으로 [C] 블록의 항목들을 풀어나간다
+
+
+============================================================
+3) 과거 구현 순서 (참고용 — 완료된 부분)
+============================================================
+
+Day 1: 부팅/전역 루트 고정 — 완료
+- [V] BootScene 정리, GameRoot 프리팹화, InitializeIfNeeded(), Build Settings 등록
+
+Day 2: SceneFlow + 페이드 — 완료
+- [V] SceneFlowController, 페이드 인/아웃, Title → Lobby 전환
+
+Day 3: Settings(옵션) — 완료
+- [V] SettingsData/Config, SettingsController(로드→적용→저장), Options UI
+
+Day 4 ~ Day 7: 기존 계획은 시스템 기획 의존도가 커서 보류
+  → 위 [C] 시스템 기획 대기 항목 + [D] 부가 기능 작업으로 대체
+
+
+============================================================
+4) 하이어라키 추천(프리팹/씬 구성) — ToDo 매핑 포함
 ============================================================
 
 [BootScene]
 BootScene
 ├─ Boot
-│  └─ BootLoader
-└─ GameRoot (Prefab, DontDestroyOnLoad)
-   ├─ _ControllersRoot (Transform 할당용)
-   │  ├─ SceneFlowController
-   │  ├─ SaveController
-   │  ├─ SettingsController
-   │  ├─ InputController
-   │  └─ AudioController (있으면 권장)
-   ├─ _UIRoot (Prefab)
+│  └─ BootLoader                              [V]
+└─ GameRoot (Prefab, DontDestroyOnLoad)        [V]
+   ├─ _ControllersRoot
+   │  ├─ SceneFlowController                  [V]
+   │  ├─ SettingsController                   [V]
+   │  ├─ AudioController                      [ ] D-2
+   │  ├─ LocaleController                     [ ] D-3
+   │  ├─ SaveController                       [ ] D-8
+   │  ├─ PauseMenuController                  [ ] D-5
+   │  └─ InputController                      [B] 시스템 기획 대기
+   ├─ _UIRoot (Prefab)                         [ ] D-1
    │  ├─ Canvas (Screen Space - Overlay)
-   │  │  ├─ FadePanel
-   │  │  ├─ PopupRoot
-   │  │  └─ ToastRoot
+   │  │  ├─ FadePanel                         [V] (SceneFlow 부착)
+   │  │  ├─ PopupRoot                         [ ] D-1
+   │  │  ├─ ToastRoot                         [ ] D-1
+   │  │  └─ OptionsScreen                     [V]
    │  └─ EventSystem
-   └─ _Runtime (옵션)
-      ├─ DebugConsole
-      └─ FPSCounter
+   └─ _Runtime (디버그/개발용)
+      ├─ FpsCounterView                       [ ] D-6
+      ├─ RuntimeLogToFile                     [ ] D-6
+      ├─ VersionInfoView                      [ ] D-6
+      └─ DebugConsole                         [ ] D-6 (선택)
 
 [TitleScene]
 TitleScene
-├─ Camera (Cinemachine 또는 기본 Camera)
+├─ Camera (기본 Camera, 추후 Cinemachine 검토)  [B] 카메라 시스템 결정 후
 ├─ Lighting (Directional Light, Volume)
 └─ UI
    └─ TitleView (Prefab)
       ├─ Logo
       ├─ Menu
-      │  ├─ ContinueButton
-      │  ├─ NewGameButton
-      │  ├─ SettingsButton
-      │  └─ QuitButton
-      └─ VersionText
+      │  ├─ ContinueButton                    [ ] D-4 (SaveController 연동 D-8 후 활성)
+      │  ├─ NewGameButton                     [ ] D-4 (덮어쓰기 경고 Popup)
+      │  ├─ SettingsButton                    [ ] D-4 (Options.Open 연결)
+      │  └─ QuitButton                        [ ] D-4 (확인 Popup → Application.Quit)
+      └─ VersionText                          [ ] D-4
 
 [LobbyScene]
 LobbyScene
-├─ Camera (Lobby 프리셋)
+├─ Camera (Lobby 프리셋)                       [B] 시스템 기획 대기
 ├─ Lighting
-├─ Environment (작업대/공방 더미)
+├─ Environment (작업대/공방 더미)               [B] 아트 방향 결정 후
 └─ UI
    └─ LobbyView (Prefab)
-      ├─ BattleButton
+      ├─ BattleButton                         [ ] (씬 연결만은 D-4 패턴 재사용)
       ├─ AnalysisButton
       ├─ DissectionButton
       └─ AssemblyButton
 
-[GameDissectionScene / GameAssemblyScene] (작업 씬 프로토타입)
+[GameDissectionScene / GameAssemblyScene] (작업 씬 프로토타입) — [B] 전체 보류
 GameDissectionScene (또는 GameAssemblyScene)
 ├─ CameraRig (오빗/팬/줌)
 ├─ Workbench (테이블/배경)
@@ -163,3 +209,115 @@ GameDissectionScene (또는 GameAssemblyScene)
       ├─ PartInfoPanel
       └─ ToolPanel (더미)
 
+
+============================================================
+5) SceneFlow 순서 (씬 전환 흐름)
+============================================================
+
+전체 흐름 다이어그램:
+
+  ┌──────────┐  부팅 완료    ┌───────────┐
+  │BootScene │ ────────────► │TitleScene │ ◄──────────────┐
+  └──────────┘ (BootLoader)  └─────┬─────┘                │
+                                   │                      │
+            ┌──────────────────────┼──────────────────┐   │
+            │ Continue / NewGame   │ Credits          │ Quit
+            ▼                      ▼                  ▼
+       ┌───────────┐          ┌────────────┐    Application.Quit
+       │LobbyScene │ ◄──┐     │CreditsScene│
+       └─────┬─────┘    │     └──────┬─────┘
+             │          │            │ 끝/Skip
+   ┌─────┬───┴────┬───┐ │            └────────────────────┘
+   ▼     ▼        ▼   ▼ │ 작업/전투 종료
+ [Battle][Analysis][Dissection][Assembly]
+   │     │        │   │ │
+   └─────┴────────┴───┴─┘
+                          (Lobby → Title 메뉴로 나가기 동선도 가능)
+
+씬 진입/진출 매트릭스:
+
+| 씬                  | 진입 (어디서)                | 진출 (어디로)                          |
+|---------------------|------------------------------|----------------------------------------|
+| BootScene           | Application 시작             | TitleScene (자동)                       |
+| TitleScene          | Boot / Lobby 이탈 / Credits 끝 | Lobby / Credits / Quit                |
+| LobbyScene          | Title (NEW/CONT) / Game 종료 | Battle / Analysis / Dissection / Assembly / Title |
+| GameBattleScene     | Lobby                        | Lobby (결과 처리는 [B])                 |
+| GameAnalysisScene   | Lobby                        | Lobby                                   |
+| GameDissectionScene | Lobby                        | Lobby                                   |
+| GameAssemblyScene   | Lobby                        | Lobby                                   |
+| CreditsScene        | Title                        | Title                                   |
+
+씬 전환 트리거 (호출 패턴):
+
+  공통 호출 패턴:
+    GameRoot.Instance.SceneFlow.NextScene(<TargetSceneListConfig>);
+    GameRoot.Instance.SceneFlow.Load();
+
+  - BootScene → TitleScene
+      BootLoader.BootAsync()
+        → GameRoot.InitializeIfNeeded()
+        → Settings.LoadAndApplyAsync()
+        → SceneFlow.CurrentScene(_nextSceneConfig)
+        → SceneManager.LoadScene(...)   // 부트 한정 동기 로드
+      ※ 추후 BootLoader도 SceneFlow.NextScene + Load 패턴으로 통일 검토 [?]
+
+  - Title → Lobby (Continue)
+      Title.ContinueButton (D-4, D-8 후 활성)
+        → 슬롯 선택 UI → SceneFlow.NextScene(LobbyScene) + Load()
+
+  - Title → Lobby (New Game)
+      Title.NewGameButton (D-4)
+        → 덮어쓰기 경고 Popup(D-1)
+        → 새 슬롯 생성(D-8)
+        → SceneFlow.NextScene(LobbyScene) + Load()
+
+  - Title → 옵션 (씬 전환 없음)
+      Title.SettingsButton (D-4)
+        → GameRoot.Instance.Options.Open()
+
+  - Title → Credits  ([?] 진입 버튼 노출 여부 결정 필요)
+      Title.CreditsButton
+        → SceneFlow.NextScene(CreditsScene) + Load()
+
+  - Title → Quit
+      Title.QuitButton (D-4)
+        → 확인 Popup(D-1) → Application.Quit()
+
+  - Lobby → 작업/전투 씬
+      Lobby.BattleButton     → SceneFlow.NextScene(GameBattleScene) + Load()
+      Lobby.AnalysisButton   → SceneFlow.NextScene(GameAnalysisScene) + Load()
+      Lobby.DissectionButton → SceneFlow.NextScene(GameDissectionScene) + Load()
+      Lobby.AssemblyButton   → SceneFlow.NextScene(GameAssemblyScene) + Load()
+
+  - Lobby → Title (메뉴로 나가기)  ([?] 동선 노출 여부 결정 필요)
+      Lobby.BackToTitleButton
+        → 저장 확인 Popup(D-1)
+        → SceneFlow.NextScene(TitleScene) + Load()
+
+  - Game* → Lobby
+      각 게임 씬의 "마치기/돌아가기" 또는 결과 화면 종료
+        → SceneFlow.NextScene(LobbyScene) + Load()
+      ※ 결과 화면 구성/통계 표시는 [B] 시스템 기획 대기
+
+  - Credits 종료
+      자동 종료 또는 Skip 버튼
+        → SceneFlow.NextScene(TitleScene) + Load()
+
+게임 씬 일시정지 흐름 (D-5 PauseMenu):
+
+  ESC ─► PauseMenuController.Open()
+        ├ Resume          → 메뉴 닫기 + Time.timeScale = 1
+        ├ Settings        → Options.Open()  (씬 전환 없음)
+        ├ Title로 나가기  → 저장 확인 Popup
+        │                   → SceneFlow.NextScene(TitleScene) + Load()
+        └ Quit            → 확인 Popup → Application.Quit()
+  ※ 옵션 화면이 떠있을 땐 ESC가 옵션 닫기에 우선 사용됨 (모달 스택 D-1)
+
+미정 사항 (시스템 기획 결정 필요):
+- [?] Title에 Credits 진입 버튼을 노출할지
+- [?] 게임 씬 종료 시 결과 화면을 거칠지, 즉시 Lobby로 복귀할지
+- [?] Lobby에서 Title로 나가는 동선 노출 여부 (작업 이탈 정책)
+- [?] BootLoader의 첫 전환을 SceneFlow.NextScene + Load 통일 패턴으로 바꿀지
+
+전제: 모든 씬 전환은 SceneFlow를 거친다 (페이드 인 → (필요 시 로딩 패널) → 활성화 → 페이드 아웃).
+씬 SO는 Assets/99_Data/001_SceneConfigData/<SceneName>.asset 으로 1:1 대응.

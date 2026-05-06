@@ -41,15 +41,27 @@ public class GameplayOptionsTabController : MonoBehaviour, IOptionsTabController
     //--------------------------------------------------------------------------
     // [3] 언어 매핑 (확장 시 두 배열에 동일 인덱스로 추가)
     //--------------------------------------------------------------------------
+    // 현재는 뼈대만 유지(한국어 1개). 새 언어가 필요해지면 두 배열에
+    // 같은 인덱스로 한 줄씩 append. 폰트 SDF가 해당 글리프를 포함하는지
+    // 반드시 함께 확인할 것(누락 시 □□□ 표시).
 
     /// <summary>드롭다운 인덱스 → ISO 639-1 언어 코드.</summary>
-    private static readonly string[] LANGUAGE_CODES = { "ko", "en", "ja" };
+    private static readonly string[] LANGUAGE_CODES = { "ko" };
 
     /// <summary>드롭다운 인덱스 → 표시 라벨.</summary>
-    private static readonly string[] LANGUAGE_LABELS = { "한국어", "English", "日本語" };
+    private static readonly string[] LANGUAGE_LABELS = { "한국어" };
 
-    /// <summary>드롭다운 인덱스 → 난이도 라벨.</summary>
-    private static readonly string[] DIFFICULTY_LABELS = { "Easy", "Normal", "Hard" };
+    // 난이도 시스템 도입 여부 미정. 현재는 NORMAL 1개로 뼈대만 유지.
+    // 도입 결정 후 두 배열에 같은 인덱스로 append (enum 순서와 무관).
+
+    /// <summary>드롭다운 인덱스 → 실제 DifficultyLevel.</summary>
+    private static readonly SettingsData.DifficultyLevel[] DIFFICULTY_VALUES =
+    {
+        SettingsData.DifficultyLevel.NORMAL,
+    };
+
+    /// <summary>드롭다운 인덱스 → 표시 라벨.</summary>
+    private static readonly string[] DIFFICULTY_LABELS = { "Normal" };
 
     //--------------------------------------------------------------------------
     // [4] 상태
@@ -83,7 +95,7 @@ public class GameplayOptionsTabController : MonoBehaviour, IOptionsTabController
             _languageDropdown.SetValueWithoutNotify(GetLanguageDropdownIndex(g.Language));
 
         if (_difficultyDropdown != null)
-            _difficultyDropdown.SetValueWithoutNotify((int)g.Difficulty);
+            _difficultyDropdown.SetValueWithoutNotify(GetDifficultyDropdownIndex(g.Difficulty));
 
         if (_showFpsToggle != null)
             _showFpsToggle.SetIsOnWithoutNotify(g.ShowFps);
@@ -117,7 +129,9 @@ public class GameplayOptionsTabController : MonoBehaviour, IOptionsTabController
     private void OnDifficultyChanged(int idx)
     {
         if (!IsReady()) return;
-        _settings.Data.GameplaySetting.Difficulty = (SettingsData.DifficultyLevel)idx;
+        if (idx < 0 || idx >= DIFFICULTY_VALUES.Length) return;
+
+        _settings.Data.GameplaySetting.Difficulty = DIFFICULTY_VALUES[idx];
         _settings.Apply();
     }
 
@@ -150,6 +164,16 @@ public class GameplayOptionsTabController : MonoBehaviour, IOptionsTabController
         for (int i = 0; i < LANGUAGE_CODES.Length; i++)
         {
             if (LANGUAGE_CODES[i] == code) return i;
+        }
+        return 0;
+    }
+
+    /// <summary>DifficultyLevel → 드롭다운 인덱스(없으면 0=NORMAL 폴백).</summary>
+    private static int GetDifficultyDropdownIndex(SettingsData.DifficultyLevel level)
+    {
+        for (int i = 0; i < DIFFICULTY_VALUES.Length; i++)
+        {
+            if (DIFFICULTY_VALUES[i] == level) return i;
         }
         return 0;
     }
