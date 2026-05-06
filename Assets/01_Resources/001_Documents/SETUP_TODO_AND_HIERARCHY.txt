@@ -37,9 +37,9 @@ OrganicEngineer - 구축 ToDo / 주간 구현 순서 / 하이어라키
 - [B] Controls 옵션 - 키바인딩: 액션 맵 확정 후 가능
 - [B] 난이도 시스템 도입 여부: 게임 코어 미정 → 도입/비도입 결정 필요
         (현재 Options UI는 NORMAL 1개로 뼈대만 유지. 데이터 enum은 EASY/NORMAL/HARD 보존)
-- [B] 부위(파트) 시스템 표현 방식: 모듈 파츠 vs 메쉬 절개 결정 필요
-- [B] 부위 ID 매핑 / 파괴 연출 규칙: 위 결정 후
-- [B] 렌더 파이프라인 결정(URP/HDRP) + 룩/톤 가이드: 아트 방향 결정 필요
+- [B] 부위(파트) 시스템 표현 방식: 모듈 파츠 vs 메쉬 절개 결정 필요 => 메쉬 절개로 결정 (3D 프로토 → [E] 트랙으로 검증)
+- [B] 부위 ID 매핑 / 파괴 연출 규칙: 위 결정 후 ([E] Step 4 이후 정식화)
+- [B] 렌더 파이프라인 결정(URP/HDRP) + 룩/톤 가이드: 아트 방향 결정 필요 => URP로 할꺼임
 - [B] 아트 규격(스케일/피벗/LOD/머티리얼): 아트 방향 결정 필요
 
 [D] 지금 진행 가능한 부가 기능 (시스템 무관, 우선순위 순)
@@ -100,6 +100,68 @@ OrganicEngineer - 구축 ToDo / 주간 구현 순서 / 하이어라키
   - [ ] 실제 게임 데이터 ISaveable 구현체는 [C] 해제 후
 
 
+[E] 메쉬 절개 프로토 트랙 (3D 절개 채택 검증용)
+  · 결정: 3D + URP + 다중 평면 근사 + 직접 구현(scratch)
+  · 위치: Assets/02_Scripts/006_MeshCutting/  +  Assets/00_Scenes/Sandbox_MeshCut.unity (신규)
+  · 코어가 본 게임 핵심 시스템이 될 가능성이 크므로 999_TestScripts가 아닌 정식 폴더로 둠.
+
+  E-Step 0. 샌드박스 씬 + 폴더 구조
+  - [V] 폴더: 006_MeshCutting/Core, /Sandbox  (Capping/Input은 다음 단계 추가)
+  - [V] 핵심 스크립트 골격(MeshCutter / CutResult / MeshCutSandboxController)
+  - [ ] Sandbox_MeshCut.unity 생성 + Target/Cutter/SandboxRoot 배치
+  - [ ] SandboxRoot에 MeshCutSandboxController 부착, Target/Cutter 참조 연결
+
+  E-Step 1. 평면 1장 절단 (캡핑 X)
+  - [V] MeshCutter.Cut(MeshFilter, Plane) — 삼각형 분류/분할 + 두 메쉬 출력
+  - [V] Cutter.up을 평면 법선으로 사용 (인스펙터 회전으로 각도 조절)
+  - [V] Inspector Cut/Reset 버튼 (Odin)
+  - [ ] 큐브로 동작 확인 — 자른 단면이 뚫려 보이면 정상(의도)
+
+  E-Step 2. 단면 캡핑 + 두 SubMesh 분리
+  - [ ] 절단 평면이 만든 교차 에지 수집
+  - [ ] 에지 → 폐곡선(Loop) 정렬 (다중 루프 가능: 도넛/장기 대응)
+  - [ ] 다각형 삼각화: ear-clipping 1차, 추후 Constrained Delaunay 검토
+  - [ ] SubMesh: [0]=외피, [1]=단면. MeshRenderer.sharedMaterials = [외피Mat, 단면Mat]
+  - [ ] 양면 처리: 위/아래 두 단면을 winding 반대로 각각 추가
+
+  E-Step 3. 단면 머티리얼 v1 (URP Shader Graph)
+  - [ ] tangent space UV 생성 (절단 평면 tangent/bitangent → 정점 2D 투영 → AABB 정규화)
+  - [ ] M_CrossSection.mat: BaseColor + 노이즈로 단순한 근육 톤 1차
+  - [ ] Render Face = Both 또는 양면 폴리곤으로 단면 양쪽 가시성 확보
+  - [ ] 외피 머티리얼은 그대로 유지
+
+  E-Step 4. 콜라이더/Rigidbody 정합
+  - [ ] MeshCollider.sharedMesh 갱신 (단면 캡핑 후 convex 옵션 가능 여부 점검)
+  - [ ] Rigidbody.ResetCenterOfMass + 질량 분배 정책
+  - [ ] 두 조각 각각 별도 Rigidbody/MeshCollider 정상 동작
+  - [B] 부위 ID 매핑(원본의 어느 부위에서 떨어진 조각인가) — [B] 부위 ID 매핑 항목과 동기화
+
+  E-Step 5. 마우스 드래그 → 임의 평면 절단
+  - [ ] InputAction(MouseLeft + MousePosition) 액션 맵 임시 정의 ([B] Input 액션 맵에 합류)
+  - [ ] 드래그 시작점 + 끝점 + 카메라 forward → 절단 평면 1장 계산
+  - [ ] 카메라 시선과 평행한 평면을 기본으로 (직관적인 "긋는 방향")
+
+  E-Step 6. 정점 머지 / 반복 절단 안정화
+  - [ ] epsilon 기반 정점 dedup (Step 1의 무지성 추가에서 진화)
+  - [ ] 같은 조각을 N회 반복 절단해도 메쉬 깨지지 않을 것
+  - [ ] 부동소수 누적 오차 처리(평면 위/아래 0 부근 처리 정책 명시)
+
+  E-Step 7. 다중 평면 근사 (자유 곡선 절단의 본체)
+  - [ ] 드래그 폴리라인 → 카메라 평면을 따라 N개 짧은 직선으로 분할
+  - [ ] 각 직선 세그먼트마다 평면 1장 생성 → 순차 절단
+  - [ ] 평면 사이 이음새가 카메라 시선에서 자연스럽게 보이는지 검증
+
+  E-Step 8. 펜 트랙 — URP Decal로 표면 절취선
+  - [ ] Decal Projector + 라인 텍스처(절취선 점선)
+  - [ ] 마우스 드래그 raycast로 데칼 위치 갱신 (메쉬 비파괴)
+  - [ ] 톱과 펜의 도구 전환 UI (메스/바늘/가위는 후속 단계)
+
+  E-검증 게이트 (Step 1~4 완료 시점에 결정)
+  - [ ] 단면 비주얼 v1이 "근육/내장처럼 보이는가"
+  - [ ] 톱 드래그 손맛이 재밌는가 (Step 5~7 갈지 voxel/SDF로 갈아탈지 결정)
+  - [ ] 본 게임을 정말 3D로 갈지 vs 기획서대로 2D로 회귀할지 최종 결정
+
+
 ============================================================
 2) 앞으로의 구현 순서 (시스템 기획 전까지)
 ============================================================
@@ -120,6 +182,12 @@ Week 3: Localization + SceneFlow 강화 + Save 골격
 - [ ] D-7 SceneFlow 전환 연출 강화 (Async + 팁)
 - [ ] D-8 Save 슬롯 아키텍처(껍데기)
   → 게임 시스템이 결정되면 즉시 끼워넣을 수 있는 상태가 됨
+
+병렬 트랙: 메쉬 절개 프로토 ([E])
+- [V] E-Step 0 + 1 (샌드박스 씬 골격 + 평면 1장 절단)
+- [ ] E-Step 2 단면 캡핑 → Step 3 단면 머티리얼 v1 까지가 1차 검증 게이트
+- 게이트 통과 후에만 Step 5~7(드래그 → 다중 평면 근사) 진행
+- 실패 시: voxel/SDF 또는 2D 회귀 결정
 
 이후 (시스템 기획 확정 후):
 - 카메라 프리셋 → Input 액션 맵 → 부위 시스템 → 진행도/전투 로그 저장
@@ -208,6 +276,21 @@ GameDissectionScene (또는 GameAssemblyScene)
    └─ WorkView
       ├─ PartInfoPanel
       └─ ToolPanel (더미)
+
+[Sandbox_MeshCut] — [E] 메쉬 절개 프로토 (BootScene 흐름 미경유, 단독 실행)
+Sandbox_MeshCut
+├─ Main Camera                                    (기본)
+├─ Directional Light                              (기본)
+├─ Target (Cube 또는 임의 메쉬)                    [E-Step 0]
+│   · MeshFilter / MeshRenderer / (선택) Collider
+├─ Cutter (Empty)                                 [E-Step 0]
+│   · position = 평면 위 한 점, up(Y) = 평면 법선
+│   · 회전/이동으로 절단 평면 각도 조정
+└─ SandboxRoot (Empty)                            [E-Step 0]
+    · MeshCutSandboxController                   [V] (Inspector Cut/Reset 버튼)
+       - Target  ← Target의 MeshFilter
+       - Cutter  ← Cutter의 Transform
+       - PieceMaterial  ← 비워두면 원본 머티리얼 재사용
 
 
 ============================================================
