@@ -40,6 +40,7 @@
   - **Update + 상태 머신(State Machine)**: `State`에 따라 단계별 로직 분리 (가독성/디버깅 최적)
   - **for/while 분해**: 반복 작업이 “프레임에 걸쳐야 하는 이유”가 없다면 한 프레임에서 끝내고, 그렇지 않다면 Update에서 단계별로 쪼갭니다.
 - **짧은 예시**: “1.5초 뒤 1회 실행”은 아래처럼 작성합니다.
+
   ```csharp
   private float _elapsed;
   private bool _fired;
@@ -55,7 +56,9 @@
       DoSomethingOnce();
   }
   ```
+
 - **짧은 예시**: “단계별 진행”은 상태로 분리합니다.
+
   ```csharp
   private enum State { None, Preparing, Playing, Finished }
   private State _state;
@@ -73,6 +76,7 @@
       }
   }
   ```
+
 - **UniTask는 “반드시 비동기여야 하는 곳”에만 사용**: 아래처럼 엔진/플랫폼/외부 리소스 특성상 `await`가 필요한 경우에만 사용합니다.
   - **씬/리소스 로딩**: `SceneManager.LoadSceneAsync`, Addressables 로드 등
   - **네트워크/웹 요청**: API 호출, 서버 통신 등
@@ -90,23 +94,28 @@
 모든 **기능(Class), 메서드(Function), 변수(Field)**에는 역할을 설명하는 주석을 최소 한 줄 이상 작성합니다. 목적에 따라 아래의 규격을 준수합니다.
 
 - **기본 한 줄 주석**: 기능, 변수, 짧은 로직 설명 시 사용합니다.
+  ```csharp
+  // 주석!
+  ```
 - **TODO / FIXME 주석**: 추가 작업이나 버그 수정이 필요한 곳에 명시합니다.
   ```csharp
   // TODO: 예외 처리 추가 필요
   // FIXME: 메모리 누수 발생 가능성 있음
   ```
 - **문서화 주석**: 클래스나 핵심 메서드의 API 문서를 작성할 때 사용합니다.
+
   ```csharp
-  /*
-   * @brief 사용자 이름을 반환한다
-   * @param id 사용자 ID
-   * @return 사용자 이름
-   */
-  string getUserName(int id);
+  /// <summary>
+  /// 사용자 이름을 반환합니다.
+  /// </summary>
+  /// <param name="id">조회할 사용자의 ID</param>
+  /// <returns>해당 ID를 가진 사용자의 이름</returns>
+  public string GetUserName(int id);
   ```
+
 - **구분선 주석**: 파일 내에서 큰 기능 단위나 영역을 나눌 때 사용합니다.
   ```csharp
-  //-------------------- 데이터 초기화 --------------------
+  //-------------------- 데이터 초기화 --------------------//
   ```
 - **상세/블록 주석**: 핵심 기능에 대한 상세한 설명이나 세부 구현 사항을 나열할 때 사용합니다.
   ```csharp
@@ -115,7 +124,7 @@
   // 설명: 객체를 생성하는 함수
   //==============================================================================
   // TODO: 세부 구현 사항
-  //    
+  //
   //==============================================================================
   ```
 
@@ -128,16 +137,14 @@
 - **Manager**: 싱글턴인 클래스에만 `Manager`를 붙입니다. (본 프로젝트에서는 사실상 `GameRoot`만 해당)
 - **Controller**: 싱글턴이 아니지만 특정 로직(시스템/도메인)을 관리하는 클래스에 `Controller`를 붙입니다. 컨트롤러는 `GameRoot` 멤버로 두고 `GameRoot.Instance` 경유로만 접근합니다.
 
-
-| 분류                 | 표기법 (Case)        | 예시                 | 비고              |
-| ------------------ | ----------------- | ------------------ | --------------- |
-| **클래스 / 구조체**      | `PascalCase`      | `PlayerController` | 명사형 사용, 역할 명시   |
-| **인터페이스**          | `IPascalCase`     | `IMoveable`        | `I` 접두사 필수      |
-| **메서드**            | `PascalCase`      | `TakeDamage()`     | 동사형 사용          |
-| **열거형(Enum) 상수**   | `SCREAMING_SNAKE` | `TILE_WALL`        | 태그/의미가 드러나도록 명명 |
-| **멤버 변수(Private)** | `_camelCase`      | `_moveSpeed`       | `_` 접두사 사용      |
-| **지역/매개 변수**       | `camelCase`       | `targetPos`        | -               |
-
+| 분류                   | 표기법 (Case)     | 예시               | 비고                        |
+| ---------------------- | ----------------- | ------------------ | --------------------------- |
+| **클래스 / 구조체**    | `PascalCase`      | `PlayerController` | 명사형 사용, 역할 명시      |
+| **인터페이스**         | `IPascalCase`     | `IMoveable`        | `I` 접두사 필수             |
+| **메서드**             | `PascalCase`      | `TakeDamage()`     | 동사형 사용                 |
+| **열거형(Enum) 상수**  | `SCREAMING_SNAKE` | `TILE_WALL`        | 태그/의미가 드러나도록 명명 |
+| **멤버 변수(Private)** | `_camelCase`      | `_moveSpeed`       | `_` 접두사 사용             |
+| **지역/매개 변수**     | `camelCase`       | `targetPos`        | -                           |
 
 ---
 
@@ -190,10 +197,10 @@ public class PlayerController : UnitBase
     private float _moveSpeed;
 
     // 프로퍼티를 활용한 캡슐화 (get; set; 로직 명시)
-    public float MoveSpeed 
-    { 
-        get => _moveSpeed; 
-        private set => _moveSpeed = value; 
+    public float MoveSpeed
+    {
+        get => _moveSpeed;
+        private set => _moveSpeed = value;
     }
 
     // 이동 로직 (의존성 주입 대상)
@@ -232,4 +239,3 @@ public class PlayerController : UnitBase
 ```
 
 > **참고**: 본 문서는 팀 협의를 통해 업데이트될 수 있으며, 수정 시 팀원 전체 공유가 필요합니다.
-
