@@ -7,7 +7,7 @@ using UnityEngine.UI;
 // TODO: CanvasGroup.blocksRaycasts 방식 지원
 //
 //==============================================================================
-public static class FadeBlock
+public class FadeBlock
 {
     //==============================================================================
     // 기능: FadeBlock::Set
@@ -16,7 +16,7 @@ public static class FadeBlock
     // TODO: 입력 차단 전용 Graphic 분리
     //
     //==============================================================================
-    public static void Set(Image image, bool blockRaycastDuringFade, bool value)
+    public void Set(Image image, bool blockRaycastDuringFade, bool value)
     {
         // Image 가 없으면 raycastTarget 을 조절할 수 없음
         if (image == null) return;

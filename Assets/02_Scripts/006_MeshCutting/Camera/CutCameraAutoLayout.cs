@@ -14,6 +14,12 @@ namespace OrganicEngineer.MeshCutting.CutCamera
     {
         //-------------------- 맴버 변수 --------------------//
 
+        // 몬스터 Renderer Bounds 계산 기능
+        private CutBounds _cutBounds = new CutBounds();
+
+        // 카메라 배치 적용 기능
+        private CutCameraPlace _cutCameraPlace = new CutCameraPlace();
+
         [TabGroup("Camera")]
         [Tooltip("CutCameraRig")]
         [SerializeField] private CutCameraRig _rig;
@@ -40,15 +46,23 @@ namespace OrganicEngineer.MeshCutting.CutCamera
 
         //-------------------- 내부 상수 --------------------//
 
-        // 측면 카메라 슬롯 인덱스(_rig._sideCamera 의 순서와 일치해야 함)
-        private const int SIDE_FRONT = 0;   // 0: Front  → 카메라 위치 = 중심의 -Z 쪽
-        private const int SIDE_RIGHT = 1;   // 1: Right  → 카메라 위치 = 중심의 -X 쪽
-        private const int SIDE_BACK  = 2;   // 2: Back   → 카메라 위치 = 중심의 +Z 쪽
-        private const int SIDE_LEFT  = 3;   // 3: Left   → 카메라 위치 = 중심의 +X 쪽
-        private const int SIDE_COUNT = 4;   // 측면 카메라 기대 개수
+        // Front 측면 카메라 슬롯 인덱스
+        private int _sideFront = 0;
+
+        // Right 측면 카메라 슬롯 인덱스
+        private int _sideRight = 1;
+
+        // Back 측면 카메라 슬롯 인덱스
+        private int _sideBack = 2;
+
+        // Left 측면 카메라 슬롯 인덱스
+        private int _sideLeft = 3;
+
+        // 측면 카메라 기대 개수
+        private int _sideCount = 4;
 
         // Bounds 가 사실상 0일 때 카메라가 한 점에 몰리는 것을 막기 위한 임계값
-        private const float MIN_EXTENT = 1e-4f;
+        private float _minExtent = 1e-4f;
 
         //-------------------- 수명주기 --------------------//
 
@@ -85,9 +99,9 @@ namespace OrganicEngineer.MeshCutting.CutCamera
             }
 
             // 측면 카메라 배열 길이 검증(4 강제)
-            if (_rig.SideCameraCount != SIDE_COUNT)
+            if (_rig.SideCameraCount != _sideCount)
             {
-                Debug.LogWarning($"[CutCameraAutoLayout] _rig.SideCameraCount({_rig.SideCameraCount}) != {SIDE_COUNT}");
+                Debug.LogWarning($"[CutCameraAutoLayout] _rig.SideCameraCount({_rig.SideCameraCount}) != {_sideCount}");
                 return;
             }
 
@@ -95,20 +109,20 @@ namespace OrganicEngineer.MeshCutting.CutCamera
             Bounds b = CalculateAnchorBounds();
 
             // Bounds 가 사실상 0이면 카메라가 한 점에 몰리므로 경고 후 종료
-            if (b.extents.sqrMagnitude < MIN_EXTENT * MIN_EXTENT)
+            if (b.extents.sqrMagnitude < _minExtent * _minExtent)
             {
                 Debug.LogWarning("[CutCameraAutoLayout] Bounds 가 너무 작아 배치를 건너뜀.");
                 return;
             }
 
             // 탑 카메라 배치
-            ApplyTop(b);
+            _cutCameraPlace.ApplyTop(_rig.TopCamera, b, _paddingRatio, _extraDistance, _useOrthographic);
 
             // 측면 카메라 4대 배치(Front/Right/Back/Left 순), 위쪽 축은 모두 월드 Y 로 통일
-            ApplySideAt(SIDE_FRONT, Vector3.back,    Vector3.up, Vector3.right,   b);
-            ApplySideAt(SIDE_RIGHT, Vector3.left,    Vector3.up, Vector3.forward, b);
-            ApplySideAt(SIDE_BACK,  Vector3.forward, Vector3.up, Vector3.right,   b);
-            ApplySideAt(SIDE_LEFT,  Vector3.right,   Vector3.up, Vector3.forward, b);
+            ApplySideAt(_sideFront, Vector3.back,    Vector3.up, Vector3.right,   b);
+            ApplySideAt(_sideRight, Vector3.left,    Vector3.up, Vector3.forward, b);
+            ApplySideAt(_sideBack,  Vector3.forward, Vector3.up, Vector3.right,   b);
+            ApplySideAt(_sideLeft,  Vector3.right,   Vector3.up, Vector3.forward, b);
         }
 
         //==============================================================================
@@ -121,40 +135,7 @@ namespace OrganicEngineer.MeshCutting.CutCamera
         private Bounds CalculateAnchorBounds()
         {
             // Bounds 계산 책임은 CutBounds 로 분리
-            return CutBounds.Calculate(_monsterAnchor);
-        }
-
-        //==============================================================================
-        // 기능: CutCameraAutoLayout::ApplyTop
-        // 설명: 탑뷰 카메라를 Bounds 중심 위쪽에 배치하고, Orthographic 사이즈는 r.z(세로)·r.x(가로) 기준으로 맞춘다.
-        //==============================================================================
-        // TODO: Perspective 모드일 때 필요한 거리 자동 계산
-        //
-        //==============================================================================
-        private void ApplyTop(Bounds b)
-        {
-            Camera top = _rig.TopCamera;
-            // 탑 카메라가 없으면 탑 배치는 건너뜀(측면 배치는 계속 진행)
-            if (top == null) return;
-
-            Vector3 c = b.center;
-            Vector3 r = b.extents;
-
-            // 위쪽으로 r.y * pad + extra 만큼 띄움
-            Vector3 pos = c + Vector3.up * (r.y * _paddingRatio + _extraDistance);
-
-            // 중심을 바라보되, up 힌트는 월드 forward(탑뷰가 좌우로 비틀리지 않도록 명시)
-            Quaternion rot = Quaternion.LookRotation(c - pos, Vector3.forward);
-
-            top.transform.SetPositionAndRotation(pos, rot);
-
-            // Orthographic 강제·사이즈 적용
-            top.orthographic = _useOrthographic;
-            if (_useOrthographic)
-            {
-                // 탑뷰: 화면 세로축 = 월드 z, 가로축 = 월드 x
-                top.orthographicSize = ComputeOrthoSize(r.z, r.x, top.aspect);
-            }
+            return _cutBounds.Calculate(_monsterAnchor);
         }
 
         //==============================================================================
@@ -172,54 +153,7 @@ namespace OrganicEngineer.MeshCutting.CutCamera
             Camera cam = _rig.GetSideCamera(slotIndex);
             if (cam == null) return;
 
-            ApplySide(cam, worldDir, verticalAxis, horizontalAxis, b);
-        }
-
-        //==============================================================================
-        // 기능: CutCameraAutoLayout::ApplySide
-        // 설명: 측면 카메라를 Bounds 의 worldDir 방향 바깥에 배치하고, 가로/세로 축에 맞춰 Orthographic 사이즈를 적용한다.
-        //==============================================================================
-        // TODO: 카메라 up 힌트를 월드 up 외에 다른 축으로 바꿀 수 있도록 매개변수화
-        //
-        //==============================================================================
-        private void ApplySide(Camera cam, Vector3 worldDir, Vector3 verticalAxis, Vector3 horizontalAxis, Bounds b)
-        {
-            Vector3 c = b.center;
-            Vector3 r = b.extents;
-
-            // worldDir 방향에서 본 Bounds 의 반치수(축에 정렬되어 있을 때 1차원 성분)
-            float extentAlong = Mathf.Abs(Vector3.Dot(worldDir, r));
-
-            // 카메라 위치: 중심에서 worldDir 방향으로 (반치수 * pad + extra) 만큼
-            Vector3 pos = c + worldDir * (extentAlong * _paddingRatio + _extraDistance);
-
-            // 중심을 바라보되, up 힌트는 월드 up
-            Quaternion rot = Quaternion.LookRotation(c - pos, Vector3.up);
-
-            cam.transform.SetPositionAndRotation(pos, rot);
-
-            // Orthographic 강제·사이즈 적용
-            cam.orthographic = _useOrthographic;
-            if (_useOrthographic)
-            {
-                // 화면 세로/가로축에 해당하는 Bounds 반치수
-                float halfH = Mathf.Abs(Vector3.Dot(verticalAxis, r));
-                float halfW = Mathf.Abs(Vector3.Dot(horizontalAxis, r));
-                cam.orthographicSize = ComputeOrthoSize(halfH, halfW, cam.aspect);
-            }
-        }
-
-        //==============================================================================
-        // 기능: CutCameraAutoLayout::ComputeOrthoSize
-        // 설명: Bounds 의 반높이/반너비와 카메라 aspect 비를 받아 Orthographic 사이즈(반높이)를 계산한다.
-        //==============================================================================
-        // TODO: aspect 가 비정상일 때 더 정교한 보호
-        //
-        //==============================================================================
-        private float ComputeOrthoSize(float halfH, float halfW, float aspect)
-        {
-            // OrthographicSize 계산 책임은 CutCameraSize 로 분리
-            return CutCameraSize.ComputeOrtho(halfH, halfW, aspect, _paddingRatio);
+            _cutCameraPlace.ApplySide(cam, worldDir, verticalAxis, horizontalAxis, b, _paddingRatio, _extraDistance, _useOrthographic);
         }
     }
 }

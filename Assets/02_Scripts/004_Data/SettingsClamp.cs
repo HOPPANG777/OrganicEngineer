@@ -5,7 +5,7 @@
 // TODO: 보정된 필드 목록 반환
 //
 //==============================================================================
-public static class SettingsClamp
+public class SettingsClamp
 {
     //==============================================================================
     // 기능: SettingsClamp::Apply
@@ -14,7 +14,7 @@ public static class SettingsClamp
     // TODO: null 카테고리 기본 생성 옵션
     //
     //==============================================================================
-    public static void Apply(SettingsData data, SettingsConfig config)
+    public void Apply(SettingsData data, SettingsConfig config)
     {
         // Config 가 없으면 각 카테고리의 기존 정책에 맡김
         if (data == null) return;

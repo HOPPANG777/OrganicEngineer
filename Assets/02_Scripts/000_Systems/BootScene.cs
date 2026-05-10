@@ -1,4 +1,5 @@
 using UnityEngine.SceneManagement;
+using UnityEngine;
 
 //==============================================================================
 // 기능: BootScene
@@ -22,9 +23,10 @@ public static class BootScene
         if (sceneConfig == null) return;
 
         // SceneFlow 가 있으면 현재 씬 정보를 기록
-        if (GameRoot.Instance != null && GameRoot.Instance.SceneFlow != null)
+        GameRoot root = Object.FindFirstObjectByType<GameRoot>();
+        if (root != null && root.SceneFlow != null)
         {
-            GameRoot.Instance.SceneFlow.CurrentScene(sceneConfig);
+            root.SceneFlow.CurrentScene(sceneConfig);
         }
 
         // 다음 씬 동기 로드

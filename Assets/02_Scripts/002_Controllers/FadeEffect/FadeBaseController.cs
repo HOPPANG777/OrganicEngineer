@@ -7,8 +7,14 @@ using UnityEngine.UI;
 // FadeBaseController: 페이드 기본
 //==============================================================================
 
-public abstract class FadeBaseController : MonoBehaviour
+public abstract partial class FadeBaseController : MonoBehaviour
 {
+    // 페이드 UI 값 적용 기능
+    private FadeView _fadeView = new FadeView();
+
+    // 페이드 중 입력 차단 기능
+    private FadeBlock _fadeBlock = new FadeBlock();
+
     // 인스펙터 연결
 
     [TabGroup("Fade Panel")]
@@ -120,7 +126,7 @@ public abstract class FadeBaseController : MonoBehaviour
         _fillValue = IsBack ? Mathf.Lerp(1f, 0f, ct) : Mathf.Lerp(0f, 1f, ct);
 
         // 실제 UI 값 적용은 FadeView 로 분리
-        FadeView.Apply(_fadeImage, _fadePanel, _startPos, _endPos, _fillValue, ct);
+        _fadeView.Apply(_fadeImage, _fadePanel, _startPos, _endPos, _fillValue, ct);
 
         if (t >= 1f)
         {
@@ -128,103 +134,9 @@ public abstract class FadeBaseController : MonoBehaviour
             _isPlaying = false;
             var cb = _onComplete;
             _onComplete = null;
-            cb?.Invoke();
+            if (cb != null) cb();
         }
     }
 
-    // 내부 함수
-
-    // 페이드 기본 시간을 가져오기(설정 파일 우선)
-    protected float GetFadeTime()
-    {
-        float time = _config != null ? _config.FadeTime : _defaultFadeTime;
-        float minTime = _minFadeTime;
-        if (minTime <= 0f) minTime = time;
-        return Mathf.Max(minTime, time);
-    }
-
-    // 너무 짧아지는 걸 막는 최소 시간을 가져오기
-    protected float GetMinTime()
-    {
-        float minTime = _minFadeTime;
-        if (minTime <= 0f) minTime = GetFadeTime();
-        return minTime;
-    }
-
-    // 페이드 중 입력 막기 설정을 가져오기(설정 파일 우선)
-    protected bool GetBlockRaycastDuringFade()
-    {
-        return _config != null ? _config.BlockRaycastDuringFade : _defaultBlockRaycastDuringFade;
-    }
-
-    // 페이드 커브를 가져오기(설정 파일 우선)
-    protected AnimationCurve GetFadeCurve()
-    {
-        if (_config == null) return null;
-        return _config.FadeCurve;
-    }
-
-    // FadePanel에 Image가 있으면 가져오기
-    protected void CacheFadeImageIfNeeded()
-    {
-        if (_fadePanel == null) return;
-        if (_fadeImage != null) return;
-
-        _fadeImage = _fadePanel.GetComponent<Image>();
-    }
-
-    // 진행 중인 페이드 효과를 멈추기
-    protected void StopFade()
-    {
-        StopInputBlock();
-        _isPlaying = false;
-        _onComplete = null;
-    }
-
-    // 실제 페이드 진행에 필요한 값을 세팅하기
-    protected void StartPlay(float duration, Action onComplete)
-    {
-        if (_fadePanel == null)
-            return;
-
-        if (duration <= 0f)
-            duration = GetFadeTime();
-
-        CacheFadeImageIfNeeded();
-        StopFade();
-
-        _fadePanel.gameObject.SetActive(true);
-
-        _playTime = duration;
-        _nowTime = 0f;
-        _fillValue = IsBack ? 1f : 0f;
-        _onComplete = onComplete;
-
-        SetupStartValue();
-        StartInputBlock();
-
-        _isPlaying = true;
-    }
-
-    // 시작 상태(위치/채우기)를 세팅하기
-    protected void SetupStartValue()
-    {
-        // 시작 값 계산과 UI 세팅은 FadeView 로 분리
-        FadeView.SetupStartValue(_fadePanel, _fadeImage, FromLeftToRight, IsBack, out _startPos, out _endPos);
-    }
-
-    // 페이드 중 입력을 막기
-    protected void StartInputBlock()
-    {
-        // 입력 차단 적용은 FadeBlock 으로 분리
-        FadeBlock.Set(_fadeImage, GetBlockRaycastDuringFade(), true);
-    }
-
-    // 페이드가 끝나면 입력 막기를 풀기
-    protected void StopInputBlock()
-    {
-        // 입력 차단 해제는 FadeBlock 으로 분리
-        FadeBlock.Set(_fadeImage, GetBlockRaycastDuringFade(), false);
-    }
 }
 

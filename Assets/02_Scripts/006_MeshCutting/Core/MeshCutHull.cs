@@ -11,7 +11,7 @@ namespace OrganicEngineer.MeshCutting
     // TODO: 공선점 유지 옵션, 오목 다각형 ear-clipping 확장
     //
     //==============================================================================
-    static class MeshCutHull
+    class MeshCutHull
     {
         //==============================================================================
         // 기능: MeshCutHull::ConvexHull2DIndices
@@ -20,7 +20,7 @@ namespace OrganicEngineer.MeshCutting
         // TODO: 중복점 사전 제거
         //
         //==============================================================================
-        public static int[] ConvexHull2DIndices(List<Vector2> pts)
+        public int[] ConvexHull2DIndices(List<Vector2> pts)
         {
             // 점이 3개 미만이면 면을 만들 수 없음
             int n = pts.Count;
@@ -74,7 +74,7 @@ namespace OrganicEngineer.MeshCutting
         }
 
         // 2D 외적 부호 계산
-        public static float Cross2(Vector2 o, Vector2 a, Vector2 b)
+        public float Cross2(Vector2 o, Vector2 a, Vector2 b)
         {
             return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
         }

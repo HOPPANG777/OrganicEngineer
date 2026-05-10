@@ -9,7 +9,7 @@ namespace OrganicEngineer.MeshCutting.CutCamera
     // TODO: Perspective 카메라 거리 계산 지원
     //
     //==============================================================================
-    public static class CutCameraSize
+    public class CutCameraSize
     {
         //==============================================================================
         // 기능: CutCameraSize::ComputeOrtho
@@ -18,7 +18,7 @@ namespace OrganicEngineer.MeshCutting.CutCamera
         // TODO: aspect 값이 비정상일 때 정책 세분화
         //
         //==============================================================================
-        public static float ComputeOrtho(float halfH, float halfW, float aspect, float paddingRatio)
+        public float ComputeOrtho(float halfH, float halfW, float aspect, float paddingRatio)
         {
             // aspect 가 0 이하이면 1로 보정해 나눗셈 오류를 방지
             if (aspect <= 0f) aspect = 1f;

@@ -8,16 +8,16 @@ using UnityEngine;
 //==============================================================================
 // SettingsController: 게임 설정의 로드/세이브 + 서브 컨트롤러 오케스트레이션
 //==============================================================================
-// - GameRoot의 멤버로 살며 GameRoot.Instance.Settings 로만 접근
+// - GameRoot의 멤버로 살며 외부에서 연결된 참조로 접근
 // - 데이터 저장: Application.persistentDataPath/settings.json
 // - 기본값/범위: SettingsConfig(SO)에서 가져옴
 // - 카테고리별 시스템 적용은 자식 서브 컨트롤러에 위임
 //   (Graphics/Audio/Camera/Gameplay)
-// - 변경 시 흐름: 외부에서 Data 수정 → Apply() → SaveAsync()
+// - 변경 시 흐름: 외부에서 Data 수정, Apply(), SaveAsync() 순서로 처리
 // - 로드 시 스키마 버전이 다르면 자동 마이그레이션 + 자동 재저장
 //==============================================================================
 
-public class SettingsController : MonoBehaviour
+public partial class SettingsController : MonoBehaviour
 {
     //--------------------------------------------------------------------------
     // [1] Inspector 연결 (Config + 서브 컨트롤러)
@@ -31,7 +31,7 @@ public class SettingsController : MonoBehaviour
     [Tooltip("저장 파일 이름(persistentDataPath 기준).")]
     [SerializeField] private string _saveFileName = "settings.json";
 
-    /// <summary>설정 기본값/범위 정의 SO(읽기 전용 참조).</summary>
+    // 설정 기본값/범위 정의 SO(읽기 전용 참조)
     public SettingsConfig Config => _config;
 
     [TabGroup("Sub Controllers")]
@@ -50,21 +50,27 @@ public class SettingsController : MonoBehaviour
     [Tooltip("게임플레이 노출 서브 컨트롤러.")]
     [SerializeField] private GameplaySettingsController _gameplay;
 
-    /// <summary>그래픽 서브 컨트롤러.</summary>
+    // 그래픽 서브 컨트롤러 getter
     public GraphicsSettingsController Graphics => _graphics;
 
-    /// <summary>오디오 서브 컨트롤러.</summary>
+    // 오디오 서브 컨트롤러 getter
     public AudioSettingsController Audio => _audio;
 
-    /// <summary>카메라/입력 서브 컨트롤러.</summary>
+    // 카메라/입력 서브 컨트롤러 getter
     public CameraSettingsController Camera => _camera;
 
-    /// <summary>게임플레이 서브 컨트롤러.</summary>
+    // 게임플레이 서브 컨트롤러 getter
     public GameplaySettingsController Gameplay => _gameplay;
 
     //--------------------------------------------------------------------------
     // [2] 상태
     //--------------------------------------------------------------------------
+
+    // 설정 저장/로드 기능
+    private SettingsSave _settingsSave = new SettingsSave();
+
+    // 설정 적용 분배 기능
+    private SettingsApply _settingsApply = new SettingsApply();
 
     [TabGroup("Status")]
     [Tooltip("현재 런타임 설정 데이터.")]
@@ -74,118 +80,20 @@ public class SettingsController : MonoBehaviour
     [Tooltip("Load 완료 여부.")]
     [SerializeField] private bool _isLoaded;
 
-    /// <summary>현재 런타임 설정 데이터(읽기 전용 참조).</summary>
+    // 현재 런타임 설정 데이터 getter
     public SettingsData Data => _data;
 
-    /// <summary>Load 완료 여부.</summary>
+    // Load 완료 여부 getter
     public bool IsLoaded => _isLoaded;
 
-    /// <summary>설정이 시스템에 적용된 직후 발생.</summary>
-    public event Action OnSettingsApplied;
+    // 설정 적용 후 호출할 외부 콜백
+    private Action _onSettingsApplied;
 
     //--------------------------------------------------------------------------
     // [3] 경로 헬퍼
     //--------------------------------------------------------------------------
 
-    /// <summary>저장 파일 전체 경로.</summary>
+    // 저장 파일 전체 경로
     private string SavePath => Path.Combine(Application.persistentDataPath, _saveFileName);
 
-    //==========================================================================
-    // [4] 로드 / 세이브
-    //==========================================================================
-
-    /*
-     * @brief 디스크에서 설정을 읽고(없으면 기본값) 시스템에 적용한다
-     * @param ct 취소 토큰(선택)
-     */
-    public async UniTask LoadAndApplyAsync(CancellationToken ct = default)
-    {
-        await LoadAsync(ct);
-        Apply();
-    }
-
-    /*
-     * @brief 디스크에서 settings.json을 읽어 _data를 채운다(없거나 실패 시 기본값)
-     * @param ct 취소 토큰(선택)
-     * @note 스키마 버전이 낮으면 자동 마이그레이션 후 자동 재저장
-     */
-    public async UniTask LoadAsync(CancellationToken ct = default)
-    {
-        if (_config == null)
-        {
-            Debug.LogError("[SettingsController] SettingsConfig가 비어있습니다. 인스펙터에 할당하세요.");
-            _data = new SettingsData();
-            _isLoaded = true;
-            return;
-        }
-
-        string path = SavePath;
-
-        // 파일이 없으면 기본값으로 시작
-        if (!File.Exists(path))
-        {
-            _data = _config.CreateDefaultData();
-            _isLoaded = true;
-            return;
-        }
-
-        // JSON 로드/마이그레이션 책임은 SettingsSave 로 분리
-        SettingsLoadResult loadResult = await SettingsSave.LoadAsync(path, _config, ct);
-        _data = loadResult.Data;
-
-        _isLoaded = true;
-
-        // 마이그레이션/복구가 일어났다면 디스크를 최신 스키마로 갱신
-        if (loadResult.NeedsResave) await SaveAsync(ct);
-    }
-
-    /*
-     * @brief 현재 _data를 settings.json으로 저장한다
-     * @param ct 취소 토큰(선택)
-     */
-    public async UniTask SaveAsync(CancellationToken ct = default)
-    {
-        // JSON 저장 책임은 SettingsSave 로 분리
-        await SettingsSave.SaveAsync(SavePath, _data, _config, ct);
-    }
-
-    //==========================================================================
-    // [5] 시스템 적용 / 리셋 (서브 컨트롤러 위임)
-    //==========================================================================
-
-    /// <summary>현재 _data를 각 서브 컨트롤러에 분배해 시스템에 반영.</summary>
-    public void Apply()
-    {
-        // 카테고리별 적용 책임은 SettingsApply 로 분리
-        SettingsApply.Apply(_data, _graphics, _audio, _camera, _gameplay, OnSettingsApplied);
-    }
-
-    /// <summary>기본값으로 되돌리고(즉시 메모리 반영) 적용까지 수행. 저장은 별도 호출 필요.</summary>
-    public void ResetToDefault()
-    {
-        if (_config == null)
-        {
-            Debug.LogError("[SettingsController] SettingsConfig가 비어있어 리셋할 수 없습니다.");
-            return;
-        }
-
-        _data = _config.CreateDefaultData();
-        Apply();
-    }
-
-    //==========================================================================
-    // [6] 옵션 UI 편의 메서드 (서브 컨트롤러 + 데이터 연결)
-    //==========================================================================
-
-    /*
-     * @brief 옵션 UI에서 해상도가 선택될 때 Index와 W/H를 동시 업데이트
-     * @param index Screen.resolutions의 인덱스
-     */
-    public void SetResolutionByIndex(int index)
-    {
-        if (_data == null || _data.GraphicsSetting == null) return;
-        if (_graphics == null) return;
-
-        _graphics.SetResolutionByIndex(_data.GraphicsSetting, index);
-    }
 }

@@ -7,7 +7,7 @@ using UnityEngine;
 // TODO: URP/HDRP 전용 AA/밝기 적용 지점 연결
 //
 //==============================================================================
-public static class GraphicsApply
+public class GraphicsApply
 {
     //==============================================================================
     // 기능: GraphicsApply::Apply
@@ -16,7 +16,7 @@ public static class GraphicsApply
     // TODO: 변경된 항목만 적용하는 dirty flag 지원
     //
     //==============================================================================
-    public static void Apply(SettingsData.Graphics g)
+    public void Apply(SettingsData.Graphics g)
     {
         // 그래픽 데이터가 없으면 적용 불가
         if (g == null) return;
@@ -46,7 +46,7 @@ public static class GraphicsApply
     }
 
     // 커스텀 ScreenMode 를 Unity FullScreenMode 로 변환
-    private static FullScreenMode ToUnityFullScreenMode(SettingsData.ScreenMode mode)
+    private FullScreenMode ToUnityFullScreenMode(SettingsData.ScreenMode mode)
     {
         switch (mode)
         {
@@ -58,7 +58,7 @@ public static class GraphicsApply
     }
 
     // 커스텀 AA 설정을 MSAA 샘플 수로 변환
-    private static int ToMsaaSamples(SettingsData.AntiAliasingMode mode)
+    private int ToMsaaSamples(SettingsData.AntiAliasingMode mode)
     {
         switch (mode)
         {
@@ -70,7 +70,7 @@ public static class GraphicsApply
     }
 
     // 그림자 레벨을 QualitySettings 에 적용
-    private static void ApplyShadowQuality(SettingsData.ShadowLevel level)
+    private void ApplyShadowQuality(SettingsData.ShadowLevel level)
     {
         switch (level)
         {
@@ -96,7 +96,7 @@ public static class GraphicsApply
     }
 
     // 텍스처 품질을 QualitySettings 에 적용
-    private static void ApplyTextureQuality(SettingsData.TextureLevel level)
+    private void ApplyTextureQuality(SettingsData.TextureLevel level)
     {
         int mipLimit;
         switch (level)
@@ -116,7 +116,7 @@ public static class GraphicsApply
     }
 
     // 해상도와 전체화면 모드 적용
-    private static void ApplyResolution(SettingsData.Graphics g)
+    private void ApplyResolution(SettingsData.Graphics g)
     {
         FullScreenMode unityMode = ToUnityFullScreenMode(g.ScreenModeValue);
         Resolution[] resolutions = Screen.resolutions;
@@ -148,7 +148,7 @@ public static class GraphicsApply
     }
 
     // 정수 Hz 를 Unity RefreshRate 로 변환
-    private static RefreshRate ToRefreshRate(int hz)
+    private RefreshRate ToRefreshRate(int hz)
     {
         return new RefreshRate
         {

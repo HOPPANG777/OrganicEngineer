@@ -7,7 +7,7 @@ using UnityEngine;
 // TODO: 플랫폼별 targetFrameRate 설정 분기
 //
 //==============================================================================
-public static class GameBoot
+public class GameBoot
 {
     //==============================================================================
     // 기능: GameBoot::ApplyEnvironment
@@ -16,7 +16,7 @@ public static class GameBoot
     // TODO: SettingsData.Graphics.TargetFrameRate 와의 우선순위 정리
     //
     //==============================================================================
-    public static void ApplyEnvironment()
+    public void ApplyEnvironment()
     {
         // 기본 목표 프레임레이트 설정
         Application.targetFrameRate = 60;
@@ -29,7 +29,7 @@ public static class GameBoot
     // TODO: 에디터 전용 자동 연결 버튼 제공
     //
     //==============================================================================
-    public static void ValidateReferences(Transform controllersRoot, SceneFlowController sceneFlow, SettingsController settings, OptionsScreenController options)
+    public void ValidateReferences(Transform controllersRoot, SceneFlowController sceneFlow, SettingsController settings, OptionsScreenController options)
     {
         // 컨트롤러 루트 검증
         if (controllersRoot == null) Debug.LogWarning("[GameRoot] ControllersRoot가 없습니다.");

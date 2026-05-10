@@ -2,15 +2,15 @@ using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-//==============================================================================
-// 기능: CutCameraSwitchInput
-// 설명: Q/E 키 입력을 받아 CutCameraRig 의 활성 측면 카메라를 이전/다음으로 전환한다.
-//==============================================================================
-// TODO: InputAction 자산 연동, 키 리바인딩, 게임패드 LB/RB 지원
-//
-//==============================================================================
 namespace OrganicEngineer.MeshCutting.CutCamera
 {
+    //==============================================================================
+    // 기능: CutCameraSwitchInput
+    // 설명: Q/E 키 입력을 받아 CutCameraRig 의 활성 측면 카메라를 이전/다음으로 전환한다.
+    //==============================================================================
+    // TODO: InputAction 자산 연동, 키 리바인딩, 게임패드 LB/RB 지원
+    //
+    //==============================================================================
     public class CutCameraSwitchInput : MonoBehaviour
     {
         //-------------------- 맴버 변수 --------------------//
@@ -58,13 +58,13 @@ namespace OrganicEngineer.MeshCutting.CutCamera
             if (kb.qKey.wasPressedThisFrame)
             {
                 _rig.SwitchPrev();
-                if (_logOnSwitch) Debug.Log($"[CutCameraSwitchInput] Q → {_rig.ActiveSideIndex}");
+                if (_logOnSwitch) Debug.Log($"[CutCameraSwitchInput] Q -> {_rig.ActiveSideIndex}");
             }
             // E: 다음 측면 카메라
             else if (kb.eKey.wasPressedThisFrame)
             {
                 _rig.SwitchNext();
-                if (_logOnSwitch) Debug.Log($"[CutCameraSwitchInput] E → {_rig.ActiveSideIndex}");
+                if (_logOnSwitch) Debug.Log($"[CutCameraSwitchInput] E -> {_rig.ActiveSideIndex}");
             }
         }
     }

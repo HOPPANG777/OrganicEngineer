@@ -1,483 +1,196 @@
-using System;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace OrganicEngineer.MeshCutting
 {
     //==============================================================================
-    // 기능: MeshCutter (정적 클래스)
-    // 설명: 메시 로컬 평면으로 삼각형을 분류·분할해 두 조각 Mesh를 만들고, 절단면은 볼록 다각형 가정으로 캡(서브메시 1)을 붙인다.
+    // 기능: MeshCutter
+    // 설명: 메시를 로컬 평면 기준으로 자르는 절단 코어 진입점이다.
     //==============================================================================
-    // TODO: 오목 단면(ear-clipping 등), 스킨드 메시, WeldInv·허용오차 옵션화
+    // TODO: 오목 단면, 스킨드 메시, 추가 버텍스 채널 지원
     //
     //==============================================================================
-    public static class MeshCutter
+    public class MeshCutter
     {
-        // 선분–평면 교차: 분모가 0에 가까울 때 사용하는 허용 오차
-        const float EdgeIntersectEpsilon = 1e-5f;
+        //-------------------- 맴버 변수 --------------------//
 
-        // 절단점 웰드 시 정수 그리드 키 만들기 위해 좌표에 곱하는 스케일
-        const float WeldInv = 1e4f;
+        // 절단되지 않은 삼각형 복사 기능
+        private MeshCutTriangle _meshCutTriangle = new MeshCutTriangle();
 
-        /// <summary>
-        /// source 메시를 메시 로컬 공간 평면으로 자른다.
-        /// Straddling 이면 단면은 볼록 다각형 가정으로 캡(서브메시 1)을 붙인다.
-        /// </summary>
+        // 평면에 걸친 삼각형 분할 기능
+        private MeshCutSplit _meshCutSplit = new MeshCutSplit();
+
+        // 절단면 캡 생성 기능
+        private MeshCutCap _meshCutCap = new MeshCutCap();
+
+        //-------------------- 기능 함수 --------------------//
+
         //==============================================================================
         // 기능: MeshCutter::Cut
-        // 설명: 정점별 평면 side를 구한 뒤 삼각형을 통째 복사 또는 SplitTriangle 분할하고, Straddling이면 캡을 시도한 뒤 relation·Mesh를 채워 반환한다.
+        // 설명: 원본 Mesh 를 로컬 Plane 으로 분류/분할하고 Above/Below 결과 Mesh 를 반환한다.
         //==============================================================================
-        // TODO: 공면 삼각형·퇴화 케이스 필터링, 로그 레벨·진단 플래그
+        // TODO: 절단 실패 원인 상세 코드 추가
         //
         //==============================================================================
-        public static CutResult Cut(Mesh src, Plane planeLocal)
+        // src: 절단할 원본 Mesh
+        // planeLocal: src 로컬 공간 기준 절단 평면
+        public CutResult Cut(Mesh src, Plane planeLocal)
         {
-            var result = new CutResult(); // 절단 결과 누적 컨테이너
+            // 절단 결과 컨테이너 생성
+            CutResult result = new CutResult();
 
+            // 원본 Mesh 가 비어 있으면 EmptySource 로 종료
             if (src == null || src.triangles == null || src.triangles.Length == 0)
             {
                 result.relation = CutPlaneRelation.EmptySource;
                 return result;
             }
 
-            // 삼각형 캐싱
-            Vector3[] srcVerts = src.vertices;  // 정점 배열 참조
+            // 원본 정점 배열 참조
+            Vector3[] srcVerts = src.vertices;
+
+            // 정점이 없으면 EmptySource 로 종료
             if (srcVerts == null || srcVerts.Length == 0)
             {
                 result.relation = CutPlaneRelation.EmptySource;
                 return result;
             }
 
-            Vector2[] srcUVs = src.uv;          // UV 채널 0 참조(null 가능)
-            Vector3[] srcNormals = src.normals; // 노멀 채널 참조(null 가능)
-            int[] srcTris = src.triangles;      // 삼각형 인덱스 버퍼(길이 3의 배수)
+            // 원본 UV 배열 참조(null 가능)
+            Vector2[] srcUVs = src.uv;
 
-            // side 저장
-            bool[] side = new bool[srcVerts.Length]; // 각 정점이 평면의 양(+)쪽이면 true
+            // 원본 노멀 배열 참조(null 가능)
+            Vector3[] srcNormals = src.normals;
 
-            for (int i = 0; i < srcVerts.Length; i++) // 모든 정점에 대해 부호 계산
-            {
-                side[i] = planeLocal.GetSide(srcVerts[i]);  // true = +, false = -
-            }
+            // 원본 삼각형 인덱스 배열 참조
+            int[] srcTris = src.triangles;
 
-            var above = new MeshBuffer(); // 평면 법선 +쪽(Above)에 쌓는 버퍼
-            var below = new MeshBuffer(); // 평면 반대(Below)에 쌓는 버퍼
+            // 각 정점이 평면 어느 쪽인지 계산
+            bool[] side = BuildSideTable(srcVerts, planeLocal);
 
-            bool straddling = false; // 한 삼각형이라도 평면에 걸쳤는지
+            // 평면 법선 +쪽 메시 버퍼
+            MeshBuffer above = new MeshBuffer();
 
-            for (int t = 0; t < srcTris.Length; t += 3) // 삼각형마다(인덱스 3개)
-            {
-                int i0 = srcTris[t + 0]; // 삼각형 정점 인덱스 0
-                int i1 = srcTris[t + 1]; // 삼각형 정점 인덱스 1
-                int i2 = srcTris[t + 2]; // 삼각형 정점 인덱스 2
+            // 평면 법선 반대쪽 메시 버퍼
+            MeshBuffer below = new MeshBuffer();
 
-                bool s0 = side[i0]; // i0 의 평면 위치(+/-)
-                bool s1 = side[i1]; // i1 의 평면 위치(+/-)
-                bool s2 = side[i2]; // i2 의 평면 위치(+/-)
+            // 삼각형 순회 중 실제 절단 발생 여부
+            bool straddling = ProcessTriangles(srcVerts, srcUVs, srcNormals, srcTris, side, planeLocal, above, below, result);
 
-                if (s0 && s1 && s2) // 세 정점 모두 같은 쪽(Above)
-                {
-                    CopyTriangle(above, srcVerts, srcUVs, srcNormals, i0, i1, i2);
-                }
-                else if (!s0 && !s1 && !s2) // 세 정점 모두 Below
-                {
-                    CopyTriangle(below, srcVerts, srcUVs, srcNormals, i0, i1, i2);
-                }
-                else // 한쪽 두 정점과 반대쪽 한 정점(또는 그 반대) → 분할
-                {
-                    straddling = true; // 평면과 교차하는 삼각형 존재
-                    SplitTriangle
-                    (
-                        above,
-                        below,
-                        planeLocal,
-                        srcVerts, srcUVs, srcNormals,
-                        i0, i1, i2,
-                        s0, s1, s2,
-                        side,
-                        result
-                    );
-                }
-            }
+            // 절단 발생 여부에 따라 결과 관계와 캡을 정리
+            ResolveResult(straddling, planeLocal.normal, above, below, result);
 
-            Vector3 planeNormal = planeLocal.normal; // 캡 바깥 방향 판별용 평면 법선
+            // Above 버퍼가 비어 있지 않으면 Mesh 로 변환
+            result.aboveMesh = above.tris.Count > 0 ? above.ToMesh() : null;
 
-            if (straddling) // 걸침 있음 → 양쪽 캡 에지 활용 가능
-            {
-                // +쪽 조각: 단면 바깥을 향하는 법선 = plane.normal (Above 영역 밖으로)
-                TryAppendConvexCap(above, result.aboveCapEdges, planeNormal);
-                // -쪽 조각: 단면 바깥이 -plane.normal
-                TryAppendConvexCap(below, result.belowCapEdges, -planeNormal);
-
-                result.relation = CutPlaneRelation.Straddling;
-            }
-            else // 걸침 없음: 전부 한쪽 또는 비어 있음
-            {
-                result.aboveCapEdges.Clear(); // 캡 불필요
-                result.belowCapEdges.Clear();
-
-                bool hasA = above.tris.Count > 0; // Above 버퍼에 외피 삼각형 존재
-                bool hasB = below.tris.Count > 0; // Below 버퍼에 외피 삼각형 존재
-
-                if (!hasA && !hasB)
-                {
-                    result.relation = CutPlaneRelation.EmptySource;
-                }
-                else if (hasA && !hasB)
-                {
-                    result.relation = CutPlaneRelation.EntirelyAbove;
-                }
-                else if (!hasA && hasB)
-                {
-                    result.relation = CutPlaneRelation.EntirelyBelow;
-                }
-                else
-                {
-                    Debug.LogWarning
-                    (
-                        "MeshCutter: 양쪽에 지오메트리가 있으나 Straddling 이 아님. Straddling 으로 처리합니다."
-                    );
-                    result.relation = CutPlaneRelation.Straddling;
-                }
-            }
-
-            result.aboveMesh = above.tris.Count > 0 ? above.ToMesh() : null; // Above Mesh 또는 null
-            result.belowMesh = below.tris.Count > 0 ? below.ToMesh() : null; // Below Mesh 또는 null
+            // Below 버퍼가 비어 있지 않으면 Mesh 로 변환
+            result.belowMesh = below.tris.Count > 0 ? below.ToMesh() : null;
 
             return result;
         }
 
-        //==============================================================================
-        // 기능: MeshCutter::CopyTriangle
-        // 설명: 원본 삼각형을 지정 버퍼에 정점 세 개 추가 후 한 삼각형으로 등록한다(절단 없음).
-        //==============================================================================
-        // TODO:
-        //
-        //==============================================================================
-        static void CopyTriangle
-        (
-            MeshBuffer buffer, // 대상 누적 버퍼
-            Vector3[] srcVec,
-            Vector2[] srcUV,
-            Vector3[] srcNormal,
-            int i0, int i1, int i2 // 원본 삼각형 정점 인덱스 세 개
-        )
+        // 모든 정점의 평면 기준 방향 테이블 생성
+        private bool[] BuildSideTable(Vector3[] srcVerts, Plane planeLocal)
         {
-            // 삼각형 복사 책임은 MeshCutTriangle 로 분리
-            MeshCutTriangle.Copy(buffer, srcVec, srcUV, srcNormal, i0, i1, i2);
+            // 정점 개수만큼 side 배열 생성
+            bool[] side = new bool[srcVerts.Length];
+
+            // 모든 정점에 대해 Plane.GetSide 계산
+            for (int i = 0; i < srcVerts.Length; i++)
+            {
+                side[i] = planeLocal.GetSide(srcVerts[i]);
+            }
+
+            return side;
         }
 
-        //==============================================================================
-        // 기능: MeshCutter::GetUV
-        // 설명: UV 배열이 없거나 범위를 벗어난 인덱스면 Vector2.zero를 반환한다.
-        //==============================================================================
-        // TODO:
-        //
-        //==============================================================================
-        static Vector2 GetUV(Vector2[] uvs, int i)
+        // 모든 삼각형을 분류하거나 분할
+        private bool ProcessTriangles(Vector3[] srcVerts, Vector2[] srcUVs, Vector3[] srcNormals, int[] srcTris, bool[] side, Plane planeLocal, MeshBuffer above, MeshBuffer below, CutResult result)
         {
-            if (uvs == null || i < 0 || i >= uvs.Length)
+            // 실제 절단 발생 여부
+            bool straddling = false;
+
+            // 삼각형 인덱스는 3개씩 한 면을 구성
+            for (int i = 0; i < srcTris.Length; i += 3)
             {
-                return Vector2.zero;
+                // 삼각형 정점 인덱스 3개
+                int i0 = srcTris[i + 0];
+                int i1 = srcTris[i + 1];
+                int i2 = srcTris[i + 2];
+
+                // 각 정점의 평면 방향
+                bool s0 = side[i0];
+                bool s1 = side[i1];
+                bool s2 = side[i2];
+
+                // 삼각형 분류/분할 처리
+                straddling |= ProcessTriangle(srcVerts, srcUVs, srcNormals, side, planeLocal, above, below, result, i0, i1, i2, s0, s1, s2);
             }
 
-            return uvs[i];
+            return straddling;
         }
 
-        //==============================================================================
-        // 기능: MeshCutter::GetNormal
-        // 설명: 노멀 배열이 없거나 범위를 벗어난 인덱스면 Vector3.up을 반환한다.
-        //==============================================================================
-        // TODO:
-        //
-        //==============================================================================
-        static Vector3 GetNormal(Vector3[] normals, int i)
+        // 삼각형 하나를 복사 또는 분할
+        private bool ProcessTriangle(Vector3[] srcVerts, Vector2[] srcUVs, Vector3[] srcNormals, bool[] side, Plane planeLocal, MeshBuffer above, MeshBuffer below, CutResult result, int i0, int i1, int i2, bool s0, bool s1, bool s2)
         {
-            if (normals == null || i < 0 || i >= normals.Length)
+            // 세 정점이 모두 Above 면 Above 버퍼에 그대로 복사
+            if (s0 && s1 && s2)
             {
-                return Vector3.up;
-            }
-
-            return normals[i];
-        }
-
-        //==============================================================================
-        // 기능: MeshCutter::SplitTriangle
-        // 설명: 평면에 걸친 단일 삼각형을 Lone 소삼각형과 반대편 사다리꼴(두 삼각형)로 나누고, PQ 절단선을 에지 목록에 넣는다.
-        //==============================================================================
-        // TODO: 정밀 한계로 인한 t 스냅·와인딩 반전 검증
-        //
-        //==============================================================================
-        static void SplitTriangle
-        (
-            MeshBuffer above,
-            MeshBuffer below,
-            Plane plane,
-            Vector3[] srcVec,
-            Vector2[] srcUV,
-            Vector3[] srcNormal,
-            int i0, int i1, int i2,
-            bool s0, bool s1, bool s2,
-            bool[] side,
-            CutResult cutResult
-        )
-        {
-            // Step 6-1. 회전: Lone 정점을 i0 자리로
-            //    sides 합이 1 이면 (s0, s1, s2 중 true 개수 1개) -> 그 인덱스가 Lone
-            //    sides 합이 2 이면 false가 Lone
-            int loneIndex;
-
-            if (s0 != s1 && s0 != s2) loneIndex = 0; // i0 가 혼자 다른 부호
-            else if (s1 != s0 && s1 != s2) loneIndex = 1; // s1이 Lone인 경우
-            else loneIndex = 2; // 나머지 경우가 s2가 Lone 경우
-
-            // 회전된 인덱스 (cyclic, 와인딩 보존)
-            int L;    // L = lone: 삼각형이 평면 어디에 위치해 있는지에 대한 기준 혼자 다른 부호
-            int M;    // M = Middle: lone 의 다음 정점 (lone 과 부호 반대, M-N 같은 부호)
-            int N;    // N = Next: M 의 다음 정점
-            switch (loneIndex)
-            {
-                case 0: // i0 이 lone인 경우
-                    {
-                        L = i0;
-                        M = i1;
-                        N = i2;
-                    }
-                    break;
-                case 1: // i1 이 lone인 경우
-                    {
-                        L = i1;
-                        M = i2;
-                        N = i0;
-                    }
-                    break;
-                default:// i2 가 lone인 경우
-                    {
-                        L = i2;
-                        M = i0;
-                        N = i1;
-                    }
-                    break;
-            }
-            bool loneSide = side[L]; // Lone 정점이 평면 +쪽이면 true(Above 헬프와 동일)
-
-            // Step 6-2. 모서리 LM, LN 의 교점 P, Q 계산
-            var (P_pos, P_uv, P_n) = LerpEdge(plane, srcVec, srcUV, srcNormal, L, M); // 모서리 LM 의 교점 P 계산
-            var (Q_pos, Q_uv, Q_n) = LerpEdge(plane, srcVec, srcUV, srcNormal, L, N); // 모서리 LN 의 교점 Q 계산
-
-            cutResult.aboveCapEdges.Add(new CutEdge(P_pos, Q_pos));
-            cutResult.belowCapEdges.Add(new CutEdge(P_pos, Q_pos));
-
-            // Step 6-3. Lone 쪽 = 삼각형 1 개 (L, P, Q)
-            //           반대쪽 = 사다리꼴 (P, M, N, Q) -> (P, M, N) / (P, N, Q)
-            MeshBuffer loneBuffer = loneSide ? above : below;     // Lone 쪽 버퍼
-            MeshBuffer otherBuffer = loneSide ? below : above;    // 반대쪽 버퍼
-
-            // Lone 쪽 삼각형
-            int li = loneBuffer.AddVertex(srcVec[L], GetUV(srcUV, L), GetNormal(srcNormal, L)); // 정점 L 추가
-            int lp = loneBuffer.AddVertex(P_pos, P_uv, P_n); // 교차점 P 추가
-            int lq = loneBuffer.AddVertex(Q_pos, Q_uv, Q_n); // 교차점 Q 추가
-            loneBuffer.AddTriangle(li, lp, lq); // 삼각형 (L,P,Q)
-
-            // 반대쪽 사다리꼴
-            int op = otherBuffer.AddVertex(P_pos, P_uv, P_n); // 중요: 같은 위치 P 라도 버퍼 분리 -> 새로 추가
-            int om = otherBuffer.AddVertex(srcVec[M], GetUV(srcUV, M), GetNormal(srcNormal, M)); // 정점 M 추가
-            int on = otherBuffer.AddVertex(srcVec[N], GetUV(srcUV, N), GetNormal(srcNormal, N)); // 정점 N 추가
-            int oq = otherBuffer.AddVertex(Q_pos, Q_uv, Q_n); // 정점 Q 추가
-            otherBuffer.AddTriangle(op, om, on); // 삼각형 (P, M, N) 와인딩 유지
-            otherBuffer.AddTriangle(op, on, oq); // 삼각형 (P, N, Q) 와인딩 유지
-        }
-
-        //==============================================================================
-        // 기능: MeshCutter::LerpEdge
-        // 설명: 두 정점을 잇는 모서리와 평면의 교차점에서 위치·UV·법선을 선형 보간해 반환한다.
-        //==============================================================================
-        // TODO: 분모 Epsilon 시 양 끝점 평면 거리 부호 모순 검출
-        //
-        //==============================================================================
-        static (Vector3 pos, Vector2 uv, Vector3 normal) LerpEdge
-        (
-            Plane plane,
-            Vector3[] srcVec,
-            Vector2[] srcUV,
-            Vector3[] srcNormal,
-            int a,
-            int b
-        )
-        {
-            // 모서리 보간 책임은 MeshCutEdge 로 분리
-            return MeshCutEdge.Lerp(plane, srcVec, srcUV, srcNormal, a, b);
-        }
-
-        //==============================================================================
-        // 기능: MeshCutter::TryAppendConvexCap
-        // 설명: 수집된 CutEdge 들로 평면 위 볼록 루프를 만들어 Fan 삼각분할 후 버퍼의 서브메시 1(캡)에 추가한다.
-        //==============================================================================
-        // TODO: 오목 단면은 ear-clipping 등으로 교체, 에지 순서 무관 입력에 대한 처리 강화
-        //
-        //==============================================================================
-        static void TryAppendConvexCap(MeshBuffer buffer, List<CutEdge> edges, Vector3 outwardNormal)
-        {
-            if (edges == null || edges.Count == 0)
-            {
-                return;
-            }
-
-            if (!TryBuildConvexCapLoop(edges, outwardNormal, out List<Vector3> loop3d))
-            {
-                return;
-            }
-
-            if (loop3d.Count < 3)
-            {
-                return;
-            }
-
-            int baseIndex = buffer.verts.Count; // 새로 추가될 캡 정점의 시작 인덱스
-            for (int i = 0; i < loop3d.Count; i++) // 폐곡선 꼭짓점
-            {
-                buffer.AddVertex(loop3d[i], Vector2.zero, outwardNormal.normalized); // 단면 노멀 고정·UV 생략
-            }
-
-            for (int i = 1; i < loop3d.Count - 1; i++) // 첫 번째 고정 극점 부채꼴
-            {
-                buffer.AddCapTriangle(baseIndex, baseIndex + i, baseIndex + i + 1);
-            }
-        }
-
-        //==============================================================================
-        // 기능: MeshCutter::TryBuildConvexCapLoop
-        // 설명: 에지 양 끝을 웰드한 뒤 평면에 2D 투영하여 볼록 껍질을 만들고, 법선과 일관된 CCW 3D 루프를 반환한다.
-        //==============================================================================
-        // TODO: 공선점·격자 크기민감 WeldInv 튜닝
-        //
-        //==============================================================================
-        static bool TryBuildConvexCapLoop(List<CutEdge> edges, Vector3 outwardNormal, out List<Vector3> loop3d)
-        {
-            loop3d = null;
-
-            var weldMap = new Dictionary<Vector3Int, int>(); // 양자화 좌표 → points 인덱스
-            var points = new List<Vector3>(); // 웰드된 고유 교차점 목록
-
-            for (int e = 0; e < edges.Count; e++)
-            {
-                WeldPoint(weldMap, points, edges[e].A);
-                WeldPoint(weldMap, points, edges[e].B);
-            }
-
-            if (points.Count < 3)
-            {
+                _meshCutTriangle.Copy(above, srcVerts, srcUVs, srcNormals, i0, i1, i2);
                 return false;
             }
 
-            Vector3 origin = points[0]; // 2D 투영 원점으로 쓸 기준점
-            Vector3 n = outwardNormal.normalized; // 단면 법선
-            if (n.sqrMagnitude < EdgeIntersectEpsilon)
+            // 세 정점이 모두 Below 면 Below 버퍼에 그대로 복사
+            if (!s0 && !s1 && !s2)
             {
+                _meshCutTriangle.Copy(below, srcVerts, srcUVs, srcNormals, i0, i1, i2);
                 return false;
             }
 
-            Vector3 t = Vector3.Cross(n, Vector3.up); // 평면 위 첫 번째 접벡터
-            if (t.sqrMagnitude < 1e-6f)
-            {
-                t = Vector3.Cross(n, Vector3.right); // up 과 평행할 때 교체축 사용
-            }
-
-            t.Normalize();
-            Vector3 b = Vector3.Cross(n, t); // t 에 직교하는 평면 내 축
-            b.Normalize();
-
-            var pts2 = new List<Vector2>(points.Count); // (t, b) 좌표로 투영한 2D 점들
-            for (int i = 0; i < points.Count; i++)
-            {
-                Vector3 d = points[i] - origin;
-                pts2.Add(new Vector2(Vector3.Dot(d, t), Vector3.Dot(d, b)));
-            }
-
-            int[] hull = ConvexHull2DIndices(pts2); // 볼록 껍질 정점 순서의 인덱스
-            if (hull == null || hull.Length < 3)
-            {
-                return false;
-            }
-
-            var hullPts = new List<Vector3>(hull.Length); // 3D 로 복원한 꼭짓점 순환
-            for (int i = 0; i < hull.Length; i++)
-            {
-                hullPts.Add(points[hull[i]]);
-            }
-
-            Vector3 c0 = hullPts[1] - hullPts[0]; // 면 방향 검사 벡터 1
-            Vector3 c1 = hullPts[2] - hullPts[0]; // 면 방향 검사 벡터 2
-            Vector3 cross = Vector3.Cross(c0, c1); // 초기 삼각형의 면 벡터
-            if (Vector3.Dot(cross, n) < 0f)
-            {
-                hullPts.Reverse(); // 바깥 법선 n 과 맞도록 면 순서 뒤집음
-            }
-
-            loop3d = hullPts;
+            // 서로 다른 방향에 걸친 삼각형은 분할
+            _meshCutSplit.Split(above, below, planeLocal, srcVerts, srcUVs, srcNormals, i0, i1, i2, s0, s1, s2, side, result);
             return true;
         }
 
-        //==============================================================================
-        // 기능: MeshCutter::WeldPoint
-        // 설명: 양자화 키로 이미 존재하는 점이면 무시하고, 없으면 points에 새 점으로 등록한다.
-        //==============================================================================
-        // TODO:
-        //
-        //==============================================================================
-        static void WeldPoint(Dictionary<Vector3Int, int> weldMap, List<Vector3> points, Vector3 p)
+        // 결과 관계와 캡 생성을 마무리
+        private void ResolveResult(bool straddling, Vector3 planeNormal, MeshBuffer above, MeshBuffer below, CutResult result)
         {
-            Vector3Int k = QuantizeV(p);
-            if (weldMap.ContainsKey(k))
+            // 실제 절단이 있으면 양쪽 캡을 생성
+            if (straddling)
             {
+                _meshCutCap.Append(above, result.aboveCapEdges, planeNormal);
+                _meshCutCap.Append(below, result.belowCapEdges, -planeNormal);
+                result.relation = CutPlaneRelation.Straddling;
                 return;
             }
 
-            int id = points.Count;
-            weldMap[k] = id;
-            points.Add(p);
+            // 절단이 없으면 캡 에지를 비움
+            result.aboveCapEdges.Clear();
+            result.belowCapEdges.Clear();
+
+            // Above 버퍼에 외피 삼각형이 있는지 확인
+            bool hasAbove = above.tris.Count > 0;
+
+            // Below 버퍼에 외피 삼각형이 있는지 확인
+            bool hasBelow = below.tris.Count > 0;
+
+            // 버퍼 상태로 평면 관계 판정
+            result.relation = ResolveRelation(hasAbove, hasBelow);
         }
 
-        //==============================================================================
-        // 기능: MeshCutter::QuantizeV
-        // 설명: 월드/로컬 연속 좌표를 WeldInv 로 스케일한 뒤 반올림해 Vector3Int 키로 만든다.
-        //==============================================================================
-        // TODO:
-        //
-        //==============================================================================
-        static Vector3Int QuantizeV(Vector3 v)
+        // Above/Below 존재 여부로 CutPlaneRelation 판정
+        private CutPlaneRelation ResolveRelation(bool hasAbove, bool hasBelow)
         {
-            return new Vector3Int(
-                Mathf.RoundToInt(v.x * WeldInv),
-                Mathf.RoundToInt(v.y * WeldInv),
-                Mathf.RoundToInt(v.z * WeldInv));
-        }
+            // 양쪽 모두 비어 있으면 소스가 비어 있는 상태
+            if (!hasAbove && !hasBelow) return CutPlaneRelation.EmptySource;
 
-        /// <summary> 단조 체인 볼록 껍질, 반환값은 pts2 인덱스 배열 (CCW). </summary>
-        //==============================================================================
-        // 기능: MeshCutter::ConvexHull2DIndices
-        // 설명: 2D 점 집합에 대해 Monotone chain 으로 볼록 껍질을 구하고, 윤곽 인덱스 배열을 반환한다(점 3개 미만이면 null).
-        //==============================================================================
-        // TODO: 공선 점이 많을 때 최적화
-        //
-        //==============================================================================
-        static int[] ConvexHull2DIndices(List<Vector2> pts)
-        {
-            // 볼록 껍질 계산 책임은 MeshCutHull 로 분리
-            return MeshCutHull.ConvexHull2DIndices(pts);
-        }
+            // Above 만 있으면 전부 평면 +쪽
+            if (hasAbove && !hasBelow) return CutPlaneRelation.EntirelyAbove;
 
-        //==============================================================================
-        // 기능: MeshCutter::Cross2
-        // 설명: 2차원 외적으로 o에서 a, b 로의 회전 방향 부호(o-a와 o-b의 대칭 차)를 반환한다.
-        //==============================================================================
-        // TODO:
-        //
-        //==============================================================================
-        static float Cross2(Vector2 o, Vector2 a, Vector2 b)
-        {
-            // 2D 외적 계산 책임은 MeshCutHull 로 분리
-            return MeshCutHull.Cross2(o, a, b);
+            // Below 만 있으면 전부 평면 반대쪽
+            if (!hasAbove && hasBelow) return CutPlaneRelation.EntirelyBelow;
+
+            // 예외적으로 양쪽에 모두 있으면 Straddling 으로 처리
+            return CutPlaneRelation.Straddling;
         }
     }
 }

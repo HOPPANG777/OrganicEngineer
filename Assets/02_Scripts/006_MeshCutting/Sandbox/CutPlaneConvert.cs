@@ -9,7 +9,7 @@ namespace OrganicEngineer.MeshCutting.Sandbox
     // TODO: Transform non-uniform scale 케이스 검증
     //
     //==============================================================================
-    public static class CutPlaneConvert
+    public class CutPlaneConvert
     {
         //==============================================================================
         // 기능: CutPlaneConvert::WorldToLocal
@@ -18,7 +18,7 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         // TODO: cutter 대신 명시적 normal/point 입력 오버로드 추가
         //
         //==============================================================================
-        public static Plane WorldToLocal(MeshFilter target, Transform cutter)
+        public Plane WorldToLocal(MeshFilter target, Transform cutter)
         {
             // 월드 공간 평면 생성
             Plane worldPlane = new Plane(cutter.up, cutter.position);

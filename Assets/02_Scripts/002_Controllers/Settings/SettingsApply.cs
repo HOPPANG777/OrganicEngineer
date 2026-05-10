@@ -7,7 +7,7 @@ using System;
 // TODO: 적용 실패 카테고리 리포트
 //
 //==============================================================================
-public static class SettingsApply
+public class SettingsApply
 {
     //==============================================================================
     // 기능: SettingsApply::Apply
@@ -16,7 +16,7 @@ public static class SettingsApply
     // TODO: 카테고리별 dirty flag 적용
     //
     //==============================================================================
-    public static void Apply
+    public void Apply
     (
         SettingsData data,
         GraphicsSettingsController graphics,
@@ -41,7 +41,7 @@ public static class SettingsApply
         // 게임플레이 설정 적용
         gameplay?.Apply(data.GameplaySetting);
 
-        // 적용 완료 알림
-        onApplied?.Invoke();
+        // 적용 완료 콜백이 있으면 직접 호출
+        if (onApplied != null) onApplied();
     }
 }

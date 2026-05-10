@@ -7,7 +7,7 @@ namespace OrganicEngineer.MeshCutting.CutCamera
     // 기능: CutCameraRig
     // 설명: 탑 카메라 1·측면 카메라 4대를 보유하며 활성 측면 인덱스를 관리한다.
     //==============================================================================
-    // TODO: enum 라벨(Front/Right/Back/Left) 도입, OnSideCameraChanged 활용처 확장
+    // TODO: enum 라벨(Front/Right/Back/Left) 도입
     //
     //==============================================================================
     public class CutCameraRig : MonoBehaviour
@@ -28,6 +28,12 @@ namespace OrganicEngineer.MeshCutting.CutCamera
 
         //-------------------- 내부 변수 --------------------//
 
+        // 카메라 enabled 상태 적용 기능
+        private CutCameraActive _cutCameraActive = new CutCameraActive();
+
+        // 측면 카메라 인덱스 순환 계산 기능
+        private CutCameraIndex _cutCameraIndex = new CutCameraIndex();
+
         private int _activeSideIndex;                               // 현재 활성화 되어 있는 측면 카메라
         private CutCameraMode _mode = CutCameraMode.TOP_PLUS_SIDE;  // 현재 모드
 
@@ -43,7 +49,7 @@ namespace OrganicEngineer.MeshCutting.CutCamera
         public CutCameraMode Mode { get => _mode; }
 
         // 현재 활성화된 측면 카메라를 반환하는 getter
-        // 탑뷰만 모드일 때는 활성 측면이 없음 → null 반환
+        // 탑뷰만 모드일 때는 활성 측면이 없으므로 null 반환
         public Camera ActiveSideCamera
         {
             get
@@ -93,7 +99,7 @@ namespace OrganicEngineer.MeshCutting.CutCamera
 
         //==============================================================================
         // 기능: CutCameraRig::SetActive
-        // 설명: 측면 인덱스를 검증·갱신하고 모드를 TopPlusSide 로 강제한 뒤 동기화·이벤트 발행.
+        // 설명: 측면 인덱스를 검증·갱신하고 모드를 TopPlusSide 로 강제한 뒤 카메라 활성 상태를 동기화한다.
         //==============================================================================
         // TODO: 잘못된 입력에 대한 에러 정책 정리
         //
@@ -132,28 +138,15 @@ namespace OrganicEngineer.MeshCutting.CutCamera
 
         //==============================================================================
         // 기능: CutCameraRig::SwitchNext
-        // 설명: 활성 측면 카메라 인덱스를 다음 칸(0→1→2→3→0)으로 이동한다.
+        // 설명: 활성 측면 카메라 인덱스를 다음 칸으로 순환 이동한다.
         //==============================================================================
         // TODO: 입력 잠금/쿨타임 옵션
         //
         //==============================================================================
         public void SwitchNext()
         {
-            /*
-            // 다음 카메라로 가려면 어떻게 해야할까?
-            // 일단 다음으로 이동할 카메라의 인덱스를 구한 뒤에
-            // 이전 카메라를 끄고 다음 인덱스의 카메라를 활성화하면 되겠지요?
-
-            1. 다음 카메라의 인덱스를 구한다.
-            2. nextIndex = _activeSideIndex = (_activeSideIndex + 1) % 4
-            3. SetIndex로 nextIndex를 전해주면 된다.
-            */
-
-            // 다음 카메라의 인덱스를 구한다.
-            // -> 현재 카메라 인덱스에 1을 더하고,
-            // 측면 카메라 갯수로 나머지를 구하면 다음 인덱스가 나온다.
-            // 2 + 1 = 3, 3 % 4 = 3;
-            int nextIndex = (_activeSideIndex + 1) % _sideCamera.Length;
+            // 다음 측면 카메라 인덱스 계산
+            int nextIndex = _cutCameraIndex.Next(_activeSideIndex, _sideCamera.Length);
 
             // 다음 카메라 활성화
             SetActive(nextIndex);
@@ -161,19 +154,15 @@ namespace OrganicEngineer.MeshCutting.CutCamera
 
         //==============================================================================
         // 기능: CutCameraRig::SwitchPrev
-        // 설명: 활성 측면 카메라 인덱스를 이전 칸(0→3→2→1→0)으로 이동한다.
+        // 설명: 활성 측면 카메라 인덱스를 이전 칸으로 순환 이동한다.
         //==============================================================================
         // TODO:
         //
         //==============================================================================
         public void SwitchPrev()
         {
-            // 이전 카메라의 인덱스를 구한다.
-            // -> 현재 카메라 인덱스에 측면 카메라 갯수에 -1을 하고
-            // 거기에 4으로 나머지를 구하면 이전 엔덱스가 구해진다.
-            // 2 + 3 = 5, 5 % 4 = 1;
-            int len = _sideCamera.Length;
-            int prevIndex = (_activeSideIndex + len - 1) % len;
+            // 이전 측면 카메라 인덱스 계산
+            int prevIndex = _cutCameraIndex.Previous(_activeSideIndex, _sideCamera.Length);
 
             // 이전 카메라 활성화
             SetActive(prevIndex);
@@ -188,30 +177,8 @@ namespace OrganicEngineer.MeshCutting.CutCamera
         //==============================================================================
         private void ApplyActive()
         {
-            // 탑뷰는 어떤 모드에서도 항상 ON
-            if (_topCamera != null)
-            {
-                _topCamera.enabled = true;
-            }
-
-            if (_mode == CutCameraMode.TOP_ONLY)
-            {
-                // 측면 전부 OFF
-                for (int i = 0; i < _sideCamera.Length; i++)
-                {
-                    if (_sideCamera[i] == null) continue;
-                    _sideCamera[i].enabled = false;
-                }
-            }
-            else // TopPlusSide
-            {
-                // 측면은 활성 인덱스 1대만 ON
-                for (int i = 0; i < _sideCamera.Length; i++)
-                {
-                    if (_sideCamera[i] == null) continue;
-                    _sideCamera[i].enabled = (i == _activeSideIndex);
-                }
-            }
+            // 카메라 활성화 적용 책임은 CutCameraActive 로 분리
+            _cutCameraActive.Apply(_topCamera, _sideCamera, _activeSideIndex, _mode);
         }
 
         //==============================================================================
@@ -228,7 +195,5 @@ namespace OrganicEngineer.MeshCutting.CutCamera
             _mode = CutCameraMode.TOP_ONLY;
             ApplyActive();
         }
-
-
-    }   
+    }
 }

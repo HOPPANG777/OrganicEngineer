@@ -8,7 +8,7 @@ using UnityEngine.SceneManagement;
 // TODO: Addressables Scene 로드 지원
 //
 //==============================================================================
-public static class SceneLoad
+public class SceneLoad
 {
     //==============================================================================
     // 기능: SceneLoad::Begin
@@ -17,7 +17,7 @@ public static class SceneLoad
     // TODO: 잘못된 씬 이름 예외 처리
     //
     //==============================================================================
-    public static AsyncOperation Begin(SceneListConfig sceneConfig)
+    public AsyncOperation Begin(SceneListConfig sceneConfig)
     {
         // 씬 설정이 없으면 로드 불가
         if (sceneConfig == null) return null;
@@ -35,13 +35,13 @@ public static class SceneLoad
     }
 
     // 로드 준비 완료 여부(progress 0.9 이상)
-    public static bool IsReady(AsyncOperation loadOp)
+    public bool IsReady(AsyncOperation loadOp)
     {
         return loadOp != null && loadOp.progress >= 0.9f;
     }
 
     // 로드된 씬 활성화
-    public static void Activate(AsyncOperation loadOp)
+    public void Activate(AsyncOperation loadOp)
     {
         // 핸들이 없으면 활성화 불가
         if (loadOp == null) return;

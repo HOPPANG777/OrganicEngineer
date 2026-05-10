@@ -5,11 +5,11 @@ using UnityEngine;
 using UnityEngine.UI;
 
 //==============================================================================
-// GraphicsOptionsTabController: 그래픽 옵션 탭 UI
+// 기능: GraphicsOptionsTabController
+// 설명: 그래픽 옵션 탭의 드롭다운/토글/슬라이더 UI를 SettingsData.Graphics 와 연결한다.
 //==============================================================================
-// - Quality / Resolution / ScreenMode / FrameRate / VSync / AA / Shadow / Texture / Brightness
-// - 컨트롤 변경 시 SettingsData에 즉시 기록 + Settings.Apply() 호출 (미리보기)
-// - 부모 OptionsScreenController가 Cancel 시 스냅샷에서 복원
+// TODO: 그래픽 프리셋, 적용 전 확인 팝업, 해상도 변경 롤백 타이머
+//
 //==============================================================================
 
 public class GraphicsOptionsTabController : MonoBehaviour, IOptionsTabController
@@ -70,27 +70,28 @@ public class GraphicsOptionsTabController : MonoBehaviour, IOptionsTabController
     // [3] 상태
     //--------------------------------------------------------------------------
 
-    /// <summary>SettingsController 캐시.</summary>
-    private SettingsController _settings;
+    private SettingsController _settings; // 옵션 데이터를 읽고 적용할 SettingsController 참조
 
-    /// <summary>이벤트 후킹 1회 보장.</summary>
-    private bool _hooked;
+    private bool _hooked; // UI 이벤트를 이미 연결했는지 여부
 
     //--------------------------------------------------------------------------
     // [3-1] 프레임레이트 드롭다운 매핑
     //--------------------------------------------------------------------------
 
-    /// <summary>드롭다운 인덱스 → 실제 FrameRate 값(-1 = 무제한).</summary>
-    private static readonly int[] FRAME_RATE_VALUES = { 30, 60, 120, 144, -1 };
+    // 드롭다운 인덱스에 대응되는 실제 목표 프레임레이트 값(-1 = 무제한)
+    private readonly int[] _frameRateValues = { 30, 60, 120, 144, -1 };
 
-    /// <summary>드롭다운 인덱스 → 라벨.</summary>
-    private static readonly string[] FRAME_RATE_LABELS = { "30 FPS", "60 FPS", "120 FPS", "144 FPS", "Unlimited" };
+    // 드롭다운에 표시되는 프레임레이트 라벨
+    private readonly string[] _frameRateLabels = { "30 FPS", "60 FPS", "120 FPS", "144 FPS", "Unlimited" };
 
-    //==========================================================================
-    // [4] IOptionsTabController 구현
-    //==========================================================================
-
-    /// <summary>Settings 주입 + 이벤트 후킹.</summary>
+    //==============================================================================
+    // 기능: GraphicsOptionsTabController::Bind
+    // 설명: SettingsController 를 캐시하고 그래픽 옵션 UI 이벤트를 한 번만 연결한다.
+    //==============================================================================
+    // TODO: OnDestroy 이벤트 해제
+    //
+    //==============================================================================
+    // controller: 옵션 화면에서 주입한 SettingsController
     public void Bind(SettingsController controller)
     {
         _settings = controller;
@@ -99,7 +100,13 @@ public class GraphicsOptionsTabController : MonoBehaviour, IOptionsTabController
         _hooked = true;
     }
 
-    /// <summary>현재 Data를 UI 컨트롤로 동기화(드롭다운 옵션 채우기 포함).</summary>
+    //==============================================================================
+    // 기능: GraphicsOptionsTabController::Refresh
+    // 설명: 현재 GraphicsSetting 값을 각 그래픽 옵션 UI 컨트롤에 다시 표시한다.
+    //==============================================================================
+    // TODO: 드롭다운 옵션 재생성을 최초 1회로 제한
+    //
+    //==============================================================================
     public void Refresh()
     {
         if (_settings == null || _settings.Data == null || _settings.Data.GraphicsSetting == null) return;
@@ -136,7 +143,14 @@ public class GraphicsOptionsTabController : MonoBehaviour, IOptionsTabController
         UpdateBrightnessLabel(g.Brightness);
     }
 
-    /// <summary>탭 활성/비활성.</summary>
+    //==============================================================================
+    // 기능: GraphicsOptionsTabController::SetTabActive
+    // 설명: 그래픽 옵션 탭 루트 패널의 표시 여부를 전환한다.
+    //==============================================================================
+    // TODO: 탭 전환 애니메이션 연결
+    //
+    //==============================================================================
+    // active: true면 탭을 표시하고 false면 숨김
     public void SetTabActive(bool active)
     {
         if (_panelRoot != null) _panelRoot.SetActive(active);
@@ -146,7 +160,13 @@ public class GraphicsOptionsTabController : MonoBehaviour, IOptionsTabController
     // [5] 드롭다운 옵션 채우기
     //==========================================================================
 
-    /// <summary>QualitySettings.names → Quality 드롭다운 옵션.</summary>
+    //==============================================================================
+    // 기능: GraphicsOptionsTabController::PopulateQualityOptions
+    // 설명: QualitySettings.names 값을 Quality 드롭다운 옵션으로 채운다.
+    //==============================================================================
+    // TODO: 품질 이름 지역화
+    //
+    //==============================================================================
     private void PopulateQualityOptions()
     {
         if (_qualityDropdown == null) return;
@@ -158,7 +178,13 @@ public class GraphicsOptionsTabController : MonoBehaviour, IOptionsTabController
         _qualityDropdown.AddOptions(options);
     }
 
-    /// <summary>Settings.Graphics.GetResolutionLabels() → 해상도 드롭다운 옵션.</summary>
+    //==============================================================================
+    // 기능: GraphicsOptionsTabController::PopulateResolutionOptions
+    // 설명: GraphicsSettingsController 의 해상도 라벨을 해상도 드롭다운 옵션으로 채운다.
+    //==============================================================================
+    // TODO: 중복 해상도 필터 표시
+    //
+    //==============================================================================
     private void PopulateResolutionOptions()
     {
         if (_resolutionDropdown == null) return;
@@ -171,19 +197,33 @@ public class GraphicsOptionsTabController : MonoBehaviour, IOptionsTabController
         _resolutionDropdown.AddOptions(options);
     }
 
-    /// <summary>FrameRate 드롭다운 옵션.</summary>
+    //==============================================================================
+    // 기능: GraphicsOptionsTabController::PopulateFrameRateOptions
+    // 설명: 고정 프레임레이트 라벨 배열을 프레임레이트 드롭다운 옵션으로 채운다.
+    //==============================================================================
+    // TODO: 모니터 주사율 기반 자동 옵션 추가
+    //
+    //==============================================================================
     private void PopulateFrameRateOptions()
     {
         if (_frameRateDropdown == null) return;
 
         _frameRateDropdown.ClearOptions();
-        var options = new List<string>(FRAME_RATE_LABELS.Length);
-        for (int i = 0; i < FRAME_RATE_LABELS.Length; i++) options.Add(FRAME_RATE_LABELS[i]);
+        var options = new List<string>(_frameRateLabels.Length);
+        for (int i = 0; i < _frameRateLabels.Length; i++) options.Add(_frameRateLabels[i]);
         _frameRateDropdown.AddOptions(options);
     }
 
-    /// <summary>주어진 라벨로 enum 드롭다운 채우기.</summary>
-    private static void PopulateEnumOptions(TMP_Dropdown dropdown, string[] labels)
+    //==============================================================================
+    // 기능: GraphicsOptionsTabController::PopulateEnumOptions
+    // 설명: 문자열 라벨 배열을 enum 형태 드롭다운 옵션으로 채운다.
+    //==============================================================================
+    // TODO: 공통 UI 헬퍼로 이동
+    //
+    //==============================================================================
+    // dropdown: 옵션을 채울 드롭다운
+    // labels: 표시할 라벨 배열
+    private void PopulateEnumOptions(TMP_Dropdown dropdown, string[] labels)
     {
         if (dropdown == null) return;
 
@@ -197,7 +237,14 @@ public class GraphicsOptionsTabController : MonoBehaviour, IOptionsTabController
     // [5-1] 인덱스 매핑 헬퍼
     //--------------------------------------------------------------------------
 
-    /// <summary>현재 Graphics 데이터 → 해상도 드롭다운 인덱스(없으면 현재 화면 인덱스 또는 0).</summary>
+    //==============================================================================
+    // 기능: GraphicsOptionsTabController::GetResolutionDropdownIndex
+    // 설명: Graphics 데이터의 ResolutionIndex 또는 현재 화면 해상도 인덱스를 드롭다운 인덱스로 반환한다.
+    //==============================================================================
+    // TODO: 해상도 목록이 비어 있을 때 UI 비활성화
+    //
+    //==============================================================================
+    // g: 현재 그래픽 설정 데이터
     private int GetResolutionDropdownIndex(SettingsData.Graphics g)
     {
         if (g.ResolutionIndex >= 0) return g.ResolutionIndex;
@@ -209,12 +256,19 @@ public class GraphicsOptionsTabController : MonoBehaviour, IOptionsTabController
         return 0;
     }
 
-    /// <summary>실제 FrameRate 값 → 드롭다운 인덱스(없으면 60FPS 인덱스).</summary>
-    private static int GetFrameRateDropdownIndex(int frameRate)
+    //==============================================================================
+    // 기능: GraphicsOptionsTabController::GetFrameRateDropdownIndex
+    // 설명: 실제 프레임레이트 값을 드롭다운 인덱스로 변환하고 없으면 60FPS 인덱스를 반환한다.
+    //==============================================================================
+    // TODO: Dictionary 캐싱
+    //
+    //==============================================================================
+    // frameRate: 찾을 프레임레이트 값
+    private int GetFrameRateDropdownIndex(int frameRate)
     {
-        for (int i = 0; i < FRAME_RATE_VALUES.Length; i++)
+        for (int i = 0; i < _frameRateValues.Length; i++)
         {
-            if (FRAME_RATE_VALUES[i] == frameRate) return i;
+            if (_frameRateValues[i] == frameRate) return i;
         }
         return 1; // 60FPS 기본
     }
@@ -223,7 +277,13 @@ public class GraphicsOptionsTabController : MonoBehaviour, IOptionsTabController
     // [6] 이벤트 후킹 / 핸들러
     //==========================================================================
 
-    /// <summary>모든 컨트롤에 onValueChanged 리스너 등록.</summary>
+    //==============================================================================
+    // 기능: GraphicsOptionsTabController::HookEvents
+    // 설명: 그래픽 옵션 컨트롤의 값 변경 이벤트를 각 핸들러에 연결한다.
+    //==============================================================================
+    // TODO: 이벤트 중복 연결 방지 로직 공통화
+    //
+    //==============================================================================
     private void HookEvents()
     {
         if (_qualityDropdown != null)      _qualityDropdown.onValueChanged.AddListener(OnQualityChanged);
@@ -237,6 +297,7 @@ public class GraphicsOptionsTabController : MonoBehaviour, IOptionsTabController
         if (_brightnessSlider != null)     _brightnessSlider.onValueChanged.AddListener(OnBrightnessChanged);
     }
 
+    // Quality 드롭다운 변경 값을 SettingsData.Graphics 에 반영
     private void OnQualityChanged(int idx)
     {
         if (_settings?.Data?.GraphicsSetting == null) return;
@@ -244,6 +305,7 @@ public class GraphicsOptionsTabController : MonoBehaviour, IOptionsTabController
         _settings.Apply();
     }
 
+    // 해상도 드롭다운 변경 값을 SettingsData.Graphics 에 반영
     private void OnResolutionChanged(int idx)
     {
         if (_settings == null) return;
@@ -251,6 +313,7 @@ public class GraphicsOptionsTabController : MonoBehaviour, IOptionsTabController
         _settings.Apply();
     }
 
+    // 화면 모드 드롭다운 변경 값을 SettingsData.Graphics 에 반영
     private void OnScreenModeChanged(int idx)
     {
         if (_settings?.Data?.GraphicsSetting == null) return;
@@ -258,15 +321,17 @@ public class GraphicsOptionsTabController : MonoBehaviour, IOptionsTabController
         _settings.Apply();
     }
 
+    // 프레임레이트 드롭다운 변경 값을 SettingsData.Graphics 에 반영
     private void OnFrameRateChanged(int idx)
     {
         if (_settings?.Data?.GraphicsSetting == null) return;
-        if (idx < 0 || idx >= FRAME_RATE_VALUES.Length) return;
+        if (idx < 0 || idx >= _frameRateValues.Length) return;
 
-        _settings.Data.GraphicsSetting.TargetFrameRate = FRAME_RATE_VALUES[idx];
+        _settings.Data.GraphicsSetting.TargetFrameRate = _frameRateValues[idx];
         _settings.Apply();
     }
 
+    // VSync 토글 변경 값을 SettingsData.Graphics 에 반영
     private void OnVSyncChanged(bool isOn)
     {
         if (_settings?.Data?.GraphicsSetting == null) return;
@@ -274,6 +339,7 @@ public class GraphicsOptionsTabController : MonoBehaviour, IOptionsTabController
         _settings.Apply();
     }
 
+    // 안티에일리어싱 드롭다운 변경 값을 SettingsData.Graphics 에 반영
     private void OnAntiAliasingChanged(int idx)
     {
         if (_settings?.Data?.GraphicsSetting == null) return;
@@ -281,6 +347,7 @@ public class GraphicsOptionsTabController : MonoBehaviour, IOptionsTabController
         _settings.Apply();
     }
 
+    // 그림자 품질 드롭다운 변경 값을 SettingsData.Graphics 에 반영
     private void OnShadowChanged(int idx)
     {
         if (_settings?.Data?.GraphicsSetting == null) return;
@@ -288,6 +355,7 @@ public class GraphicsOptionsTabController : MonoBehaviour, IOptionsTabController
         _settings.Apply();
     }
 
+    // 텍스처 품질 드롭다운 변경 값을 SettingsData.Graphics 에 반영
     private void OnTextureChanged(int idx)
     {
         if (_settings?.Data?.GraphicsSetting == null) return;
@@ -295,6 +363,7 @@ public class GraphicsOptionsTabController : MonoBehaviour, IOptionsTabController
         _settings.Apply();
     }
 
+    // 밝기 슬라이더 변경 값을 SettingsData.Graphics 에 반영
     private void OnBrightnessChanged(float value)
     {
         if (_settings?.Data?.GraphicsSetting == null) return;
@@ -307,7 +376,14 @@ public class GraphicsOptionsTabController : MonoBehaviour, IOptionsTabController
     // [6-1] 라벨 갱신
     //--------------------------------------------------------------------------
 
-    /// <summary>밝기 값 라벨 갱신(소수 둘째 자리).</summary>
+    //==============================================================================
+    // 기능: GraphicsOptionsTabController::UpdateBrightnessLabel
+    // 설명: 밝기 값을 소수점 둘째 자리 문자열로 변환해 라벨에 표시한다.
+    //==============================================================================
+    // TODO: 퍼센트 표시 옵션
+    //
+    //==============================================================================
+    // value: 표시할 밝기 값
     private void UpdateBrightnessLabel(float value)
     {
         if (_brightnessValueLabel == null) return;

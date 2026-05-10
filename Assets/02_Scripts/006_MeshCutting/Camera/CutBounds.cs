@@ -9,7 +9,7 @@ namespace OrganicEngineer.MeshCutting.CutCamera
     // TODO: 비활성 Renderer 포함 옵션, SkinnedMeshRenderer.localBounds 보정
     //
     //==============================================================================
-    public static class CutBounds
+    public class CutBounds
     {
         //==============================================================================
         // 기능: CutBounds::Calculate
@@ -18,7 +18,7 @@ namespace OrganicEngineer.MeshCutting.CutCamera
         // TODO: Renderer 가 없을 때 기본 크기 옵션 제공
         //
         //==============================================================================
-        public static Bounds Calculate(Transform anchor)
+        public Bounds Calculate(Transform anchor)
         {
             // 기준 Transform 이 없으면 0 크기 Bounds 반환
             if (anchor == null) return new Bounds(Vector3.zero, Vector3.zero);

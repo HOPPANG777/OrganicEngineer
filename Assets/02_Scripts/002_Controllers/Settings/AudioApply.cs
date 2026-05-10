@@ -8,7 +8,7 @@ using UnityEngine.Audio;
 // TODO: Mixer 파라미터 적용 성공 여부 검증
 //
 //==============================================================================
-public static class AudioApply
+public class AudioApply
 {
     //==============================================================================
     // 기능: AudioApply::Apply
@@ -17,7 +17,7 @@ public static class AudioApply
     // TODO: 채널별 음소거 옵션
     //
     //==============================================================================
-    public static void Apply
+    public void Apply
     (
         AudioMixer audioMixer,
         SettingsData.Audio audio,
@@ -52,7 +52,7 @@ public static class AudioApply
     }
 
     // Mixer 또는 AudioListener 에 마스터 음소거 상태 적용
-    public static void SetMasterMute(AudioMixer audioMixer, string masterParam, bool mute)
+    public void SetMasterMute(AudioMixer audioMixer, string masterParam, bool mute)
     {
         // Mixer 가 있으면 마스터 파라미터를 무음/최대 중 하나로 설정
         if (audioMixer != null)
@@ -66,7 +66,7 @@ public static class AudioApply
     }
 
     // 0~1 선형 볼륨을 dB 로 바꿔 Mixer 파라미터에 적용
-    public static void SetMixerVolume(AudioMixer audioMixer, string param, float linear01)
+    public void SetMixerVolume(AudioMixer audioMixer, string param, float linear01)
     {
         // Mixer 또는 파라미터 이름이 없으면 적용 불가
         if (audioMixer == null || string.IsNullOrEmpty(param)) return;

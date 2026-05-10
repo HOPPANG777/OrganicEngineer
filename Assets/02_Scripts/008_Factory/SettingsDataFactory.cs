@@ -5,7 +5,7 @@
 // TODO: 카테고리별 Factory 분리
 //
 //==============================================================================
-public static class SettingsDataFactory
+public class SettingsDataFactory
 {
     //==============================================================================
     // 기능: SettingsDataFactory::CreateDefault
@@ -14,7 +14,7 @@ public static class SettingsDataFactory
     // TODO: 현재 화면 해상도 기반 기본 ResolutionIndex 설정
     //
     //==============================================================================
-    public static SettingsData CreateDefault(SettingsConfig config)
+    public SettingsData CreateDefault(SettingsConfig config)
     {
         // Config 가 없으면 빈 데이터 반환
         if (config == null) return new SettingsData();
@@ -22,7 +22,7 @@ public static class SettingsDataFactory
         // 기본값으로 새 데이터 생성
         SettingsData data = new SettingsData
         {
-            Version = SettingsData.CURRENT_VERSION,
+            Version = new SettingsData().CurrentVersion,
 
             GraphicsSetting = new SettingsData.Graphics
             {

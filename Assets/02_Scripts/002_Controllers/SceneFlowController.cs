@@ -24,6 +24,15 @@ enum LoadState
 
 public class SceneFlowController : MonoBehaviour
 {
+    // 씬 페이드 연출 기능
+    private SceneFade _sceneFade = new SceneFade();
+
+    // 씬 로드 실행 기능
+    private SceneLoad _sceneLoad = new SceneLoad();
+
+    // 로딩 패널 표시 기능
+    private SceneLoadingView _sceneLoadingView = new SceneLoadingView();
+
     [TabGroup("FadeEffect")]
     [Tooltip("페이드 효과 컨트롤러")]
     [SerializeField] private FadeEffectController _fadeEffect;  // 페이드 효과 컨트롤러
@@ -82,19 +91,19 @@ public class SceneFlowController : MonoBehaviour
     {
         _stateElapsed += Time.deltaTime;
         bool fadeDone = _stateElapsed >= _fadeConfig.FadeTime;
-        bool loadReady = SceneLoad.IsReady(_loadOp);
+        bool loadReady = _sceneLoad.IsReady(_loadOp);
 
-        // 페이드도 끝났고 로드도 끝났다 → 로딩 패널 없이 바로 활성화 + FadeOut
+        // 페이드도 끝났고 로드도 끝났으면 로딩 패널 없이 바로 활성화
         if (fadeDone && loadReady)
         {
             ActivateAndFadeOut();
             return;
         }
 
-        // 페이드는 끝났는데 로드가 아직 → 로딩 패널 켜고 대기 상태로
+        // 페이드는 끝났는데 로드가 아직이면 로딩 패널을 켜고 대기 상태로 전환
         if (fadeDone && !loadReady)
         {
-            SceneLoadingView.SetVisible(_loadingPanel, true);
+            _sceneLoadingView.SetVisible(_loadingPanel, true);
             _loadState = LoadState.LOAD_WAITFORLOAD;
         }
     }
@@ -103,10 +112,10 @@ public class SceneFlowController : MonoBehaviour
     private void UpdateWaitingForLoad()
     {
         if (_loadOp == null) return;
-        if (!SceneLoad.IsReady(_loadOp)) return;
+        if (!_sceneLoad.IsReady(_loadOp)) return;
 
-        // 로딩 완료 → 패널 끄고 활성화 + FadeOut
-        SceneLoadingView.SetVisible(_loadingPanel, false);
+        // 로딩 완료 시 패널을 끄고 씬 활성화 진행
+        _sceneLoadingView.SetVisible(_loadingPanel, false);
         ActivateAndFadeOut();
     }
 
@@ -114,16 +123,16 @@ public class SceneFlowController : MonoBehaviour
     private void ActivateAndFadeOut()
     {
         // 이 시점까지 현재 씬은 켜져 있고, 아래 한 줄에서 다음 씬 활성화 + 현재 씬 자동 언로드
-        SceneLoad.Activate(_loadOp);
+        _sceneLoad.Activate(_loadOp);
 
         // 현재 씬 정보 갱신
         _currentScene = _nextScene;
         _stateElapsed = 0f;
         _loadState = LoadState.LOAD_FADEOUT;
-        SceneFade.FadeOut(_fadeEffect, _fadeConfig);
+        _sceneFade.FadeOut(_fadeEffect, _fadeConfig);
     }
 
-    // FadeOut 진행 중 → 끝나면 상태 초기화
+    // FadeOut 진행 중이면 끝난 뒤 상태 초기화
     private void UpdateFadingOut()
     {
         _stateElapsed += Time.deltaTime;
@@ -149,13 +158,13 @@ public class SceneFlowController : MonoBehaviour
         _loadState = LoadState.LOAD_FADEIN;
 
         // 시작 시점에는 로딩 패널은 꺼둔다 (FadeIn 시간 안에 끝나면 안 켤 수도 있음)
-        SceneLoadingView.SetVisible(_loadingPanel, false);
+        _sceneLoadingView.SetVisible(_loadingPanel, false);
 
         // 페이드 인 효과 시작 (FadeConfig 기준 시간으로 강제 일치)
-        SceneFade.FadeIn(_fadeEffect, _fadeConfig);
+        _sceneFade.FadeIn(_fadeEffect, _fadeConfig);
 
         // 비동기 씬 로드 시작 (활성화는 직접 제어)
-        _loadOp = SceneLoad.Begin(_nextScene);
+        _loadOp = _sceneLoad.Begin(_nextScene);
     }
 
     // 씬을 다시 로드합니다.

@@ -9,7 +9,7 @@ namespace OrganicEngineer.MeshCutting
     // TODO: SplitTriangle 전체 이관
     //
     //==============================================================================
-    static class MeshCutTriangle
+    class MeshCutTriangle
     {
         //==============================================================================
         // 기능: MeshCutTriangle::Copy
@@ -18,7 +18,7 @@ namespace OrganicEngineer.MeshCutting
         // TODO: 추가 버텍스 채널 복사
         //
         //==============================================================================
-        public static void Copy(MeshBuffer buffer, Vector3[] srcVec, Vector2[] srcUV, Vector3[] srcNormal, int i0, int i1, int i2)
+        public void Copy(MeshBuffer buffer, Vector3[] srcVec, Vector2[] srcUV, Vector3[] srcNormal, int i0, int i1, int i2)
         {
             // 원본 정점 3개를 새 버퍼 정점으로 추가
             int a = buffer.AddVertex(srcVec[i0], GetUV(srcUV, i0), GetNormal(srcNormal, i0));
@@ -30,16 +30,24 @@ namespace OrganicEngineer.MeshCutting
         }
 
         // UV 배열이 없거나 범위 밖이면 기본값 반환
-        private static Vector2 GetUV(Vector2[] uvs, int i)
+        private Vector2 GetUV(Vector2[] uvs, int i)
         {
-            if (uvs == null || i < 0 || i >= uvs.Length) return Vector2.zero;
+            if (uvs == null || i < 0 || i >= uvs.Length)
+            {
+                return Vector2.zero;
+            }
+
             return uvs[i];
         }
 
         // 노멀 배열이 없거나 범위 밖이면 기본값 반환
-        private static Vector3 GetNormal(Vector3[] normals, int i)
+        private Vector3 GetNormal(Vector3[] normals, int i)
         {
-            if (normals == null || i < 0 || i >= normals.Length) return Vector3.up;
+            if (normals == null || i < 0 || i >= normals.Length)
+            {
+                return Vector3.up;
+            }
+
             return normals[i];
         }
     }

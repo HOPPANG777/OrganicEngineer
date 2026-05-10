@@ -20,8 +20,9 @@ public static class BootSequence
     //==============================================================================
     public static async UniTask<bool> RunAsync(CancellationToken ct)
     {
-        // GameRoot는 자동 생성 금지이므로 BootScene에 반드시 배치되어 있어야 함
-        if (!GameRoot.TryGetInstance(out GameRoot root) || root == null)
+        // GameRoot는 BootScene에 배치된 인스턴스를 직접 찾음
+        GameRoot root = Object.FindFirstObjectByType<GameRoot>();
+        if (root == null)
         {
             Debug.LogError("[BootSequence] GameRoot를 찾지 못했습니다. BootScene에 GameRoot를 배치하세요.");
             return false;

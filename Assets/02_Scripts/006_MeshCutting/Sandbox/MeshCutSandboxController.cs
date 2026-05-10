@@ -1,48 +1,62 @@
 using UnityEngine;
 using Sirenix.OdinInspector;
+using UnityEngine.Serialization;
 
 namespace OrganicEngineer.MeshCutting.Sandbox
 {
     //==============================================================================
     // 기능: MeshCutSandboxController (MonoBehaviour)
-    // 설명: 인스펙터에서 타겟과 평면(Transform cutter)으로 MeshCutter.Cut 을 호출해 조각 GameObject를 스폰하고, Reset 으로 정리한다.
+    // 설명: 인스펙터에서 타겟과 평면(Transform cutter)으로 멤버 절단 기능을 호출해 조각 GameObject를 스폰하고, Reset 으로 정리한다.
     //==============================================================================
     // TODO: _originalMaterials 활용 또는 제거 결정, 콜라이더 재생성·레이어 복사
     //
     //==============================================================================
     public class MeshCutSandboxController : MonoBehaviour
     {
+        //-------------------- 맴버 변수 --------------------//
+
+        // 메시 절단 코어 기능
+        private MeshCutter _meshCutter = new MeshCutter();
+
+        // 월드 평면을 로컬 평면으로 변환하는 기능
+        private CutPlaneConvert _cutPlaneConvert = new CutPlaneConvert();
+
         [Title("References")]
         // 원본 메시
         [Tooltip("절단 대상 MeshFilter")]
-        [SerializeField] MeshFilter target;
+        [FormerlySerializedAs("target")]
+        [SerializeField] private MeshFilter _target;
 
         // 절개 평면
         [Tooltip("절단 평면. 위치=평면 위 점, up=법선(Above 쪽)")]
-        [SerializeField] Transform cutter;
+        [FormerlySerializedAs("cutter")]
+        [SerializeField] private Transform _cutter;
 
         // 조각 재료
         [Tooltip("외피(서브메시 0) 머티리얼. 비우면 Target과 동일")]
-        [SerializeField] Material pieceMaterial;
+        [FormerlySerializedAs("pieceMaterial")]
+        [SerializeField] private Material _pieceMaterial;
 
         // 단면 재료
         [Tooltip("단면(서브메시 1) 머티리얼. 비우면 pieceMaterial과 동일")]
-        [SerializeField] Material capMaterial;
+        [FormerlySerializedAs("capMaterial")]
+        [SerializeField] private Material _capMaterial;
 
         // 조각 생성 컴포넌트
         [Tooltip("잘린 조각 GameObject 생성과 목록 관리를 담당")]
-        [SerializeField] MeshCutPieceSpawn pieceSpawn;
+        [FormerlySerializedAs("pieceSpawn")]
+        [SerializeField] private MeshCutPieceSpawn _pieceSpawn;
 
         // 원본 메시
-        Mesh _originalMesh;
+        private Mesh _originalMesh;
         // 원본 메시 재료
-        Material[] _originalMaterials;
+        private Material[] _originalMaterials;
         // 절개 상태
-        bool _isCut;
+        private bool _isCut;
 
         //==============================================================================
         // 기능: MeshCutSandboxController::Cut
-        // 설명: 월드 평면을 메시 로컬로 바꿔 MeshCutter.Cut 을 호출하고, Straddling 일 때만 조각 GO를 스폰한 뒤 타겟을 비활성화한다.
+        // 설명: 월드 평면을 메시 로컬로 바꿔 멤버 절단 기능을 호출하고, Straddling 일 때만 조각 GO를 스폰한 뒤 타겟을 비활성화한다.
         //==============================================================================
         // TODO: 비-Straddling 시 UI 토스트·에디터 디버그 컬러링
         //
@@ -51,37 +65,24 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         // 절개 실행
         public void Cut()
         {
-            /*
-             1. 가드: target / cutter null 체크, 이미 _isCut 이면 무시
-
-             2. 백업: _originalMesh = target.sharedMesh (한 번만)
-
-             3. 월드 평면 만들기: Plane worldPlane = new Plane(cutter.up, cutter.position);
-
-             4. 로컬 평면으로 변환
-
-             5. CutResult result = MeshCutter.Cut(target.sharedMesh, localPlane);
-
-             6. 정책: relation == Straddling 일 때만 스폰(Straddling = wasCut 와 동일)
-
-             7. SpawnPiece(result.aboveMesh, "Above"), Below 동일
-
-             8. target.gameObject.SetActive(false);
-
-             9. _isCut = true;
-             */
+            // 1. target / cutter null 체크, 이미 _isCut 이면 무시
+            // 2. _originalMesh 에 target.sharedMesh 참조 저장
+            // 3. CutPlaneConvert 로 월드 평면을 로컬 평면으로 변환
+            // 4. _meshCutter.Cut 으로 실제 절단 수행
+            // 5. Straddling 일 때만 Above/Below 조각 스폰
+            // 6. 원본 target 을 비활성화하고 _isCut 을 true 로 변경
 
             // 가드: 대상·평면 없음 또는 이미 한 번 절단함
-            if (target == null || cutter == null || _isCut) return;
+            if (_target == null || _cutter == null || _isCut) return;
 
             // Cut 직전 원본 Mesh 참조 저장
-            _originalMesh = target.sharedMesh;
+            _originalMesh = _target.sharedMesh;
 
             // MeshCutter 에 전달할 타겟 로컬 평면
-            Plane localPlane = CutPlaneConvert.WorldToLocal(target, cutter);
+            Plane localPlane = _cutPlaneConvert.WorldToLocal(_target, _cutter);
 
-            // 정적 절단 진입
-            CutResult result = MeshCutter.Cut(target.sharedMesh, localPlane);
+            // 멤버 절단 기능으로 절단 실행
+            CutResult result = _meshCutter.Cut(_target.sharedMesh, localPlane);
 
             // 실제로 평면이 메시를 가를 때만 게임오브젝트 스폰
             if (result.relation != CutPlaneRelation.Straddling)
@@ -114,7 +115,7 @@ namespace OrganicEngineer.MeshCutting.Sandbox
             SpawnPiece(result.belowMesh, "Below");
 
             // 원본 타겟은 화면/피직스에서 숨김(sharedMesh 교체 안 함)
-            target.gameObject.SetActive(false);
+            _target.gameObject.SetActive(false);
 
             // Cut 버튼 비활성화용 상태
             _isCut = true;
@@ -131,21 +132,16 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         [Button("Reset"), EnableIf(nameof(_isCut))]
         public void ResetAll()
         {
-            /*
-                1. _spawned 안의 모든 GameObject Destroy 후 리스트 Clear
-
-                2. target.gameObject.SetActive(true);
-
-                3. (sharedMesh 는 안 건드렸으니 복구 불필요)
-
-                4. _isCut = false;
-            */
+            // 1. MeshCutPieceSpawn 이 생성한 모든 조각을 파괴하고 목록 Clear
+            // 2. target.gameObject.SetActive(true) 로 원본 표시
+            // 3. sharedMesh 는 교체하지 않았으므로 별도 복구 없음
+            // 4. _isCut 을 false 로 되돌려 Cut 버튼 재활성화
 
             // 생성된 조각 리스트 초기화
             EnsurePieceSpawn().Clear();
 
             // 원본 메시 활성화
-            target.gameObject.SetActive(true);
+            _target.gameObject.SetActive(true);
 
             // 절개 상태 초기화
             _isCut = false;
@@ -159,10 +155,10 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         //
         //==============================================================================
         // 조각 생성
-        void SpawnPiece(Mesh m, string suffix)
+        private void SpawnPiece(Mesh m, string suffix)
         {
             // 조각 생성 책임은 MeshCutPieceSpawn 으로 분리
-            EnsurePieceSpawn().Spawn(target, m, suffix, pieceMaterial, capMaterial);
+            EnsurePieceSpawn().Spawn(_target, m, suffix, _pieceMaterial, _capMaterial);
         }
 
         //==============================================================================
@@ -172,21 +168,21 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         // TODO: 인스펙터 명시 연결만 허용할지 정책 결정
         //
         //==============================================================================
-        MeshCutPieceSpawn EnsurePieceSpawn()
+        private MeshCutPieceSpawn EnsurePieceSpawn()
         {
             // 이미 연결된 컴포넌트가 있으면 그대로 사용
-            if (pieceSpawn != null) return pieceSpawn;
+            if (_pieceSpawn != null) return _pieceSpawn;
 
             // 같은 GameObject 에 붙어 있는 컴포넌트 검색
-            pieceSpawn = GetComponent<MeshCutPieceSpawn>();
+            _pieceSpawn = GetComponent<MeshCutPieceSpawn>();
 
             // 없으면 런타임에 추가해 기존 씬 연결 없이도 동작 보존
-            if (pieceSpawn == null)
+            if (_pieceSpawn == null)
             {
-                pieceSpawn = gameObject.AddComponent<MeshCutPieceSpawn>();
+                _pieceSpawn = gameObject.AddComponent<MeshCutPieceSpawn>();
             }
 
-            return pieceSpawn;
+            return _pieceSpawn;
         }
     }
 }

@@ -21,7 +21,7 @@ namespace OrganicEngineer.MeshCutting
         // 서브메시 0(외피) 삼각형 인덱스 나열 CW/CCW
         public readonly List<int> tris = new List<int>();
 
-        // 서브메시 1 단면(캡) 삼각형 인덱스 — 비어 있으면 ToMesh 는 서브메시 1개만 설정
+        // 서브메시 1 단면(캡) 삼각형 인덱스, 비어 있으면 ToMesh 는 서브메시 1개만 설정
         public readonly List<int> capTris = new List<int>();
 
         //==============================================================================

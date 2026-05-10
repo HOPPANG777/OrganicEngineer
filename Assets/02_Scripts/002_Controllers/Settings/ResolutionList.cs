@@ -7,10 +7,10 @@ using UnityEngine;
 // TODO: 중복 해상도 필터링 옵션
 //
 //==============================================================================
-public static class ResolutionList
+public class ResolutionList
 {
     // 현재 디스플레이가 지원하는 해상도 목록 반환
-    public static Resolution[] GetAvailable()
+    public Resolution[] GetAvailable()
     {
         return Screen.resolutions;
     }
@@ -22,7 +22,7 @@ public static class ResolutionList
     // TODO: 지역화 포맷 지원
     //
     //==============================================================================
-    public static string[] GetLabels()
+    public string[] GetLabels()
     {
         // 현재 플랫폼의 해상도 목록
         Resolution[] resolutions = Screen.resolutions;
@@ -40,7 +40,7 @@ public static class ResolutionList
     }
 
     // 현재 화면 해상도와 가장 가까운 인덱스 반환
-    public static int GetCurrentIndex()
+    public int GetCurrentIndex()
     {
         Resolution[] resolutions = Screen.resolutions;
         for (int i = 0; i < resolutions.Length; i++)
@@ -55,7 +55,7 @@ public static class ResolutionList
     }
 
     // 선택한 해상도 인덱스를 Graphics 데이터에 반영
-    public static void SetByIndex(SettingsData.Graphics g, int index)
+    public void SetByIndex(SettingsData.Graphics g, int index)
     {
         // 데이터가 없으면 갱신 불가
         if (g == null) return;

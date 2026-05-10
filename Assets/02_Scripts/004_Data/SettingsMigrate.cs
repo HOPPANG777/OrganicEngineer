@@ -5,7 +5,7 @@
 // TODO: 버전별 마이그레이션 함수 분리
 //
 //==============================================================================
-public static class SettingsMigrate
+public class SettingsMigrate
 {
     //==============================================================================
     // 기능: SettingsMigrate::ToCurrent
@@ -14,7 +14,7 @@ public static class SettingsMigrate
     // TODO: v2 이후 마이그레이션 단계 추가
     //
     //==============================================================================
-    public static bool ToCurrent(SettingsData data)
+    public bool ToCurrent(SettingsData data)
     {
         // 데이터가 없으면 마이그레이션 불가
         if (data == null) return false;

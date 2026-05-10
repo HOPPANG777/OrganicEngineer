@@ -11,7 +11,7 @@ using UnityEngine;
 // TODO: 백업 파일 생성, 저장 실패 재시도
 //
 //==============================================================================
-public static class SettingsSave
+public class SettingsSave
 {
     //==============================================================================
     // 기능: SettingsSave::LoadAsync
@@ -20,7 +20,7 @@ public static class SettingsSave
     // TODO: JsonUtility 대신 버전 호환성이 좋은 serializer 검토
     //
     //==============================================================================
-    public static async UniTask<SettingsLoadResult> LoadAsync(string path, SettingsConfig config, CancellationToken ct = default)
+    public async UniTask<SettingsLoadResult> LoadAsync(string path, SettingsConfig config, CancellationToken ct = default)
     {
         // Config 가 없으면 빈 데이터로 복구
         if (config == null)
@@ -57,7 +57,7 @@ public static class SettingsSave
                 int prevVersion = loaded.Version;
                 if (loaded.MigrateToCurrent())
                 {
-                    Debug.Log($"[SettingsSave] 설정 스키마 마이그레이션: v{prevVersion} -> v{SettingsData.CURRENT_VERSION}");
+                    Debug.Log($"[SettingsSave] 설정 스키마 마이그레이션: v{prevVersion} -> v{loaded.CurrentVersion}");
                     needsResave = true;
                 }
 
@@ -88,7 +88,7 @@ public static class SettingsSave
     // TODO: 임시 파일 쓰기 후 교체 방식으로 안전 저장
     //
     //==============================================================================
-    public static async UniTask SaveAsync(string path, SettingsData data, SettingsConfig config, CancellationToken ct = default)
+    public async UniTask SaveAsync(string path, SettingsData data, SettingsConfig config, CancellationToken ct = default)
     {
         // 저장할 데이터가 없으면 종료
         if (data == null)

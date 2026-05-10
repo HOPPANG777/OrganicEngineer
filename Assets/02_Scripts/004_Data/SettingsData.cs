@@ -8,7 +8,7 @@ using UnityEngine;
 // - 기본값은 SettingsConfig(SO)에서 복제해 채운다
 // - Unity 의존도를 낮춰 테스트/확장이 용이하도록 [Serializable] 클래스로 작성
 // - 카테고리는 SettingsData 안의 중첩 클래스로 분리
-//   → UnityEngine.AudioSettings 등과의 이름 충돌 방지 + 책임 명확화
+//   UnityEngine.AudioSettings 등과의 이름 충돌 방지 + 책임 명확화
 // - Version + 마이그레이션 로직으로 향후 스키마 변경에 대응
 //==============================================================================
 
@@ -19,28 +19,38 @@ public class SettingsData
     // [0] 스키마 버전
     //==========================================================================
 
-    /// <summary>현재 코드가 다루는 스키마 버전. 필드 추가/이름 변경 시 +1.</summary>
-    public const int CURRENT_VERSION = 1;
+    // 현재 코드가 다루는 스키마 버전
+    private int _currentVersion = 1;
 
-    /// <summary>저장된 데이터의 스키마 버전(0이면 초기/구버전).</summary>
-    [SerializeField] private int _version = CURRENT_VERSION;
+    // 설정 데이터 범위 보정 기능
+    private SettingsClamp _settingsClamp = new SettingsClamp();
 
+    // 설정 데이터 마이그레이션 기능
+    private SettingsMigrate _settingsMigrate = new SettingsMigrate();
+
+    // 저장된 데이터의 스키마 버전
+    [SerializeField] private int _version = 1;
+
+    // 현재 코드가 다루는 스키마 버전 getter
+    public int CurrentVersion { get => _currentVersion; }
+
+    // 저장된 데이터의 스키마 버전 getter/setter
     public int Version { get => _version; set => _version = value; }
 
     //--------------------------------------------------------------------------
     // [1] 카테고리별 데이터(중첩 클래스 인스턴스)
     //--------------------------------------------------------------------------
 
-    /// <summary>그래픽 설정 묶음.</summary>
+    // 그래픽 설정 묶음
     [SerializeField] private Graphics _graphics = new Graphics();
 
-    /// <summary>오디오 설정 묶음.</summary>
+    // 오디오 설정 묶음
     [SerializeField] private Audio _audio = new Audio();
 
-    /// <summary>카메라/입력 설정 묶음.</summary>
+    // 카메라/입력 설정 묶음
     [SerializeField] private Camera _camera = new Camera();
 
-    /// <summary>게임플레이 설정 묶음.</summary>
+    // 게임플레이 설정 묶음
     [SerializeField] private Gameplay _gameplay = new Gameplay();
 
     public Graphics GraphicsSetting { get => _graphics; set => _graphics = value; }
@@ -52,29 +62,35 @@ public class SettingsData
     // [2] 유효성 보정
     //--------------------------------------------------------------------------
 
-    /*
-     * @brief 모든 카테고리의 값이 허용 범위 안에 있도록 클램프한다
-     * @param config 기본값/범위가 정의된 SettingsConfig
-     */
+    //==============================================================================
+    // 기능: SettingsData::ClampWith
+    // 설명: 모든 카테고리의 값이 SettingsConfig 허용 범위 안에 있도록 보정한다.
+    //==============================================================================
+    // TODO: 보정된 필드 목록 반환
+    //
+    //==============================================================================
+    // config: 기본값/범위가 정의된 SettingsConfig
     public void ClampWith(SettingsConfig config)
     {
         // 범위 보정 책임은 SettingsClamp 로 분리
-        SettingsClamp.Apply(this, config);
+        _settingsClamp.Apply(this, config);
     }
 
     //--------------------------------------------------------------------------
     // [3] 마이그레이션
     //--------------------------------------------------------------------------
 
-    /*
-     * @brief 저장된 구버전 데이터를 현재 스키마로 끌어올린다
-     * @return 마이그레이션이 일어났으면 true (호출 측에서 자동 재저장 트리거)
-     * @note 향후 스키마 변경 시 if (_version < N) { ... _version = N; } 블록을 추가
-     */
+    //==============================================================================
+    // 기능: SettingsData::MigrateToCurrent
+    // 설명: 저장된 구버전 데이터를 현재 스키마로 끌어올리고 변경 여부를 반환한다.
+    //==============================================================================
+    // TODO: v2 이후 마이그레이션 단계 추가
+    //
+    //==============================================================================
     public bool MigrateToCurrent()
     {
         // 마이그레이션 책임은 SettingsMigrate 로 분리
-        return SettingsMigrate.ToCurrent(this);
+        return _settingsMigrate.ToCurrent(this);
     }
 
     //==========================================================================

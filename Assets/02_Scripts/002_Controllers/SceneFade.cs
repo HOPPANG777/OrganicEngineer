@@ -5,10 +5,10 @@
 // TODO: 페이드 컨트롤러 null 정책 세분화
 //
 //==============================================================================
-public static class SceneFade
+public class SceneFade
 {
     // 페이드 인 시작
-    public static void FadeIn(FadeEffectController fadeEffect, FadeEffectConfig fadeConfig)
+    public void FadeIn(FadeEffectController fadeEffect, FadeEffectConfig fadeConfig)
     {
         // 페이드 컨트롤러 또는 설정이 없으면 처리 불가
         if (fadeEffect == null || fadeConfig == null) return;
@@ -18,7 +18,7 @@ public static class SceneFade
     }
 
     // 페이드 아웃 시작
-    public static void FadeOut(FadeEffectController fadeEffect, FadeEffectConfig fadeConfig)
+    public void FadeOut(FadeEffectController fadeEffect, FadeEffectConfig fadeConfig)
     {
         // 페이드 컨트롤러 또는 설정이 없으면 처리 불가
         if (fadeEffect == null || fadeConfig == null) return;

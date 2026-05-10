@@ -10,19 +10,14 @@ namespace OrganicEngineer.MeshCutting
     // TODO: 경계 접촉(touch only) 상태가 필요하면 값 추가 검토
     //
     //==============================================================================
-    /// <summary> 소스 메시(로컬 평면 기준)와 절단 평면의 관계. 스폰/UI는 이 값으로 분기. </summary>
     public enum CutPlaneRelation
     {
-        /// <summary> source 가 null 이거나 삼각형·정점 없음. </summary>
         EmptySource, // 소스 또는 지오메트리 없음
 
-        /// <summary> 삼각형 최소 1개가 평면에 걸림. 실제 2조각 분할 + 캡 서브메시. </summary>
         Straddling, // 실제 교차 분할 발생
 
-        /// <summary> 걸친 삼각형 없음, 전부 Plane.normal +쪽. </summary>
         EntirelyAbove, // 평면이 메시 한쪽만 포함(+법선 헬프와 동일)
 
-        /// <summary> 걸친 삼각형 없음, 전부 반대쪽. </summary>
         EntirelyBelow // 평면이 메시를 한쪽(+반대)으로만 포함
     }
 
@@ -33,12 +28,20 @@ namespace OrganicEngineer.MeshCutting
     // TODO:
     //
     //==============================================================================
-    /// <summary> Step 2: 로컬 공간 절단면 위 한 변. 동일 PQ가 양쪽 리스트에 반복될 수 있음. </summary>
     public readonly struct CutEdge
     {
         public readonly Vector3 A; // 선분 끝 A
         public readonly Vector3 B; // 선분 끝 B
 
+        //==============================================================================
+        // 기능: CutEdge::CutEdge
+        // 설명: 절단면 위 선분의 양 끝점을 저장한다.
+        //==============================================================================
+        // TODO:
+        //
+        //==============================================================================
+        // a: 선분 시작점
+        // b: 선분 끝점
         public CutEdge(Vector3 a, Vector3 b)
         {
             A = a;
@@ -55,19 +58,16 @@ namespace OrganicEngineer.MeshCutting
     //==============================================================================
     public class CutResult
     {
-        /// <summary> 평면과 메시의 관계. </summary>
         public CutPlaneRelation relation; // Straddling 등 관계 플래그
 
         public Mesh aboveMesh;  // +법선 쪽 조각(없으면 null)
         public Mesh belowMesh;   // 반대쪽 조각(없으면 null)
 
-        /// <summary> Straddling 일 때 true. (옵션 B: relation 으로 먼저 분기 권장) </summary>
+        // Straddling 일 때 true 를 반환하는 보조 getter
         public bool wasCut => relation == CutPlaneRelation.Straddling;
 
-        /// <summary> +쪽 조각 단면 캡 Triangulation 입력(로컬). Straddling 에만 의미 있음. </summary>
         public List<CutEdge> aboveCapEdges = new List<CutEdge>(); // Above 캡 에지 목록
 
-        /// <summary> -쪽 조각 단면 캡용. </summary>
         public List<CutEdge> belowCapEdges = new List<CutEdge>(); // Below 캡 에지 목록
     }
 }

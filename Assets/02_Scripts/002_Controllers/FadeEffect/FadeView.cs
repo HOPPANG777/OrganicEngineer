@@ -8,7 +8,7 @@ using UnityEngine.UI;
 // TODO: 세로 페이드, 원형 페이드 방식 추가
 //
 //==============================================================================
-public static class FadeView
+public class FadeView
 {
     //==============================================================================
     // 기능: FadeView::Apply
@@ -17,7 +17,7 @@ public static class FadeView
     // TODO: CanvasGroup alpha 방식 지원
     //
     //==============================================================================
-    public static void Apply(Image image, RectTransform panel, Vector2 startPos, Vector2 endPos, float fillValue, float curveValue)
+    public void Apply(Image image, RectTransform panel, Vector2 startPos, Vector2 endPos, float fillValue, float curveValue)
     {
         // Image 방식이면 fillAmount 로 페이드 처리
         if (image != null)
@@ -40,7 +40,7 @@ public static class FadeView
     // TODO: RectTransform width 계산 캐싱
     //
     //==============================================================================
-    public static void SetupStartValue(RectTransform panel, Image image, bool fromLeftToRight, bool isBack, out Vector2 startPos, out Vector2 endPos)
+    public void SetupStartValue(RectTransform panel, Image image, bool fromLeftToRight, bool isBack, out Vector2 startPos, out Vector2 endPos)
     {
         // 기본 위치 값 초기화
         startPos = Vector2.zero;

@@ -9,10 +9,12 @@ namespace OrganicEngineer.MeshCutting
     // TODO: 탄젠트/컬러 등 추가 버텍스 채널 보간
     //
     //==============================================================================
-    static class MeshCutEdge
+    class MeshCutEdge
     {
+        //-------------------- 맴버 변수 --------------------//
+
         // 선분-평면 교차 허용 오차
-        private const float EDGE_INTERSECT_EPSILON = 1e-5f;
+        private float _edgeIntersectEpsilon = 1e-5f;
 
         //==============================================================================
         // 기능: MeshCutEdge::Lerp
@@ -21,7 +23,7 @@ namespace OrganicEngineer.MeshCutting
         // TODO: 분모가 0에 가까운 경우 진단 로그 옵션
         //
         //==============================================================================
-        public static (Vector3 pos, Vector2 uv, Vector3 normal) Lerp
+        public (Vector3 pos, Vector2 uv, Vector3 normal) Lerp
         (
             Plane plane,
             Vector3[] srcVec,
@@ -37,7 +39,7 @@ namespace OrganicEngineer.MeshCutting
 
             // 보간 비율 계산
             float denom = dA - dB;
-            float t = Mathf.Abs(denom) < EDGE_INTERSECT_EPSILON ? 0.5f : dA / denom;
+            float t = Mathf.Abs(denom) < _edgeIntersectEpsilon ? 0.5f : dA / denom;
             t = Mathf.Clamp01(t);
 
             // 위치와 UV 보간
@@ -46,7 +48,7 @@ namespace OrganicEngineer.MeshCutting
 
             // 노멀 보간 후 정규화
             Vector3 normal = Vector3.Lerp(GetNormal(srcNormal, a), GetNormal(srcNormal, b), t);
-            if (normal.sqrMagnitude < EDGE_INTERSECT_EPSILON * EDGE_INTERSECT_EPSILON)
+            if (normal.sqrMagnitude < _edgeIntersectEpsilon * _edgeIntersectEpsilon)
             {
                 normal = Vector3.up;
             }
@@ -58,17 +60,37 @@ namespace OrganicEngineer.MeshCutting
             return (pos, uv, normal);
         }
 
-        // UV 배열이 없거나 범위 밖이면 기본값 반환
-        private static Vector2 GetUV(Vector2[] uvs, int i)
+        //==============================================================================
+        // 기능: MeshCutEdge::GetUV
+        // 설명: UV 배열이 없거나 인덱스가 범위 밖이면 Vector2.zero 를 반환한다.
+        //==============================================================================
+        // TODO:
+        //
+        //==============================================================================
+        public Vector2 GetUV(Vector2[] uvs, int i)
         {
-            if (uvs == null || i < 0 || i >= uvs.Length) return Vector2.zero;
+            if (uvs == null || i < 0 || i >= uvs.Length)
+            {
+                return Vector2.zero;
+            }
+
             return uvs[i];
         }
 
-        // 노멀 배열이 없거나 범위 밖이면 기본값 반환
-        private static Vector3 GetNormal(Vector3[] normals, int i)
+        //==============================================================================
+        // 기능: MeshCutEdge::GetNormal
+        // 설명: 노멀 배열이 없거나 인덱스가 범위 밖이면 Vector3.up 을 반환한다.
+        //==============================================================================
+        // TODO:
+        //
+        //==============================================================================
+        public Vector3 GetNormal(Vector3[] normals, int i)
         {
-            if (normals == null || i < 0 || i >= normals.Length) return Vector3.up;
+            if (normals == null || i < 0 || i >= normals.Length)
+            {
+                return Vector3.up;
+            }
+
             return normals[i];
         }
     }

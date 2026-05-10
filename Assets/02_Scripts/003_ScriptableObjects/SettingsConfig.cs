@@ -12,6 +12,9 @@ using Sirenix.OdinInspector;
 [CreateAssetMenu(menuName = "OrganicEngineer/Settings Config", fileName = "SettingsConfig")]
 public class SettingsConfig : ScriptableObject
 {
+    // 설정 기본 데이터 생성 기능
+    private SettingsDataFactory _settingsDataFactory = new SettingsDataFactory();
+
     //==========================================================================
     // [1] 그래픽 기본값
     //==========================================================================
@@ -184,16 +187,19 @@ public class SettingsConfig : ScriptableObject
     public bool DefaultShowFps => _defaultShowFps;
 
     //==========================================================================
-    // [5] 기본값 → SettingsData 생성
+    // [5] 기본값으로 SettingsData 생성
     //==========================================================================
 
-    /*
-     * @brief 본 Config의 기본값을 채운 SettingsData 인스턴스를 새로 만든다
-     * @return 기본값으로 초기화된 SettingsData (현재 스키마 버전)
-     */
+    //==============================================================================
+    // 기능: SettingsConfig::CreateDefaultData
+    // 설명: 본 Config 의 기본값을 채운 SettingsData 인스턴스를 새로 만든다.
+    //==============================================================================
+    // TODO: 현재 디스플레이 해상도를 기본값에 반영
+    //
+    //==============================================================================
     public SettingsData CreateDefaultData()
     {
         // 기본 데이터 생성 책임은 SettingsDataFactory 로 분리
-        return SettingsDataFactory.CreateDefault(this);
+        return _settingsDataFactory.CreateDefault(this);
     }
 }

@@ -10,11 +10,11 @@ using UnityEngine.InputSystem;
 // TODO: InputAction 자산 기반 리바인딩
 //
 //==============================================================================
-public static class OptionsHotkey
+public class OptionsHotkey
 {
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
     // 매핑되지 않은 키 경고를 1회만 출력하기 위한 플래그
-    private static bool _warnedUnmappedKey;
+    private bool _warnedUnmappedKey;
 #endif
 
     //==============================================================================
@@ -24,7 +24,7 @@ public static class OptionsHotkey
     // TODO: 여러 키 조합 지원
     //
     //==============================================================================
-    public static bool IsPressedThisFrame(KeyCode key)
+    public bool IsPressedThisFrame(KeyCode key)
     {
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
         // New Input System 키보드 획득
@@ -41,7 +41,7 @@ public static class OptionsHotkey
 
 #if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
     // KeyCode 를 New Input System 키 상태로 매핑
-    private static bool MapAndCheckKey(Keyboard kb, KeyCode key)
+    private bool MapAndCheckKey(Keyboard kb, KeyCode key)
     {
         switch (key)
         {
