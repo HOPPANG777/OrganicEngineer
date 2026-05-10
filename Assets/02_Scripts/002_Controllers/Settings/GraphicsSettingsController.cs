@@ -18,33 +18,8 @@ public class GraphicsSettingsController : MonoBehaviour
     /// <summary>그래픽 설정을 Unity 시스템에 반영.</summary>
     public void Apply(SettingsData.Graphics g)
     {
-        if (g == null) return;
-
-        // 품질 레벨
-        int maxQuality = Mathf.Max(0, QualitySettings.names.Length - 1);
-        int quality = Mathf.Clamp(g.QualityLevel, 0, maxQuality);
-        QualitySettings.SetQualityLevel(quality, applyExpensiveChanges: true);
-
-        // VSync (1 = Every V Blank, 0 = Don't Sync)
-        QualitySettings.vSyncCount = g.VSync ? 1 : 0;
-
-        // 프레임레이트 (-1이면 무제한)
-        Application.targetFrameRate = g.TargetFrameRate;
-
-        // 안티에일리어싱 (MSAA만 QualitySettings로 처리. FXAA/SMAA는 URP/HDRP Volume 영역)
-        QualitySettings.antiAliasing = ToMsaaSamples(g.AntiAliasing);
-
-        // 그림자 품질
-        ApplyShadowQuality(g.ShadowQuality);
-
-        // 텍스처 품질
-        ApplyTextureQuality(g.TextureQuality);
-
-        // 해상도 / 풀스크린
-        ApplyResolution(g);
-
-        // 밝기는 게임 측 셰이더/포스트프로세싱에 의존하므로 여기서는 값만 보관
-        // 소비자는 SettingsController.OnSettingsApplied 이벤트에서 g.Brightness 를 읽어 적용
+        // Unity 시스템 적용 책임은 GraphicsApply 로 분리
+        GraphicsApply.Apply(g);
     }
 
     //--------------------------------------------------------------------------
@@ -175,7 +150,8 @@ public class GraphicsSettingsController : MonoBehaviour
      */
     public Resolution[] GetAvailableResolutions()
     {
-        return Screen.resolutions;
+        // 해상도 목록 책임은 ResolutionList 로 분리
+        return ResolutionList.GetAvailable();
     }
 
     /*
@@ -184,26 +160,15 @@ public class GraphicsSettingsController : MonoBehaviour
      */
     public string[] GetResolutionLabels()
     {
-        Resolution[] resolutions = Screen.resolutions;
-        string[] labels = new string[resolutions.Length];
-        for (int i = 0; i < resolutions.Length; i++)
-        {
-            Resolution r = resolutions[i];
-            labels[i] = $"{r.width} x {r.height} @ {Mathf.RoundToInt((float)r.refreshRateRatio.value)}Hz";
-        }
-        return labels;
+        // UI 라벨 생성 책임은 ResolutionList 로 분리
+        return ResolutionList.GetLabels();
     }
 
     /// <summary>현재 화면 해상도와 가장 가까운 Screen.resolutions 인덱스(없으면 -1).</summary>
     public int GetCurrentResolutionIndex()
     {
-        Resolution[] resolutions = Screen.resolutions;
-        for (int i = 0; i < resolutions.Length; i++)
-        {
-            if (resolutions[i].width == Screen.width && resolutions[i].height == Screen.height)
-                return i;
-        }
-        return -1;
+        // 현재 해상도 검색 책임은 ResolutionList 로 분리
+        return ResolutionList.GetCurrentIndex();
     }
 
     /*
@@ -213,16 +178,8 @@ public class GraphicsSettingsController : MonoBehaviour
      */
     public void SetResolutionByIndex(SettingsData.Graphics g, int index)
     {
-        if (g == null) return;
-
-        Resolution[] resolutions = Screen.resolutions;
-        if (index < 0 || index >= resolutions.Length) return;
-
-        Resolution r = resolutions[index];
-        g.ResolutionIndex = index;
-        g.Width = r.width;
-        g.Height = r.height;
-        g.RefreshRate = Mathf.RoundToInt((float)r.refreshRateRatio.value);
+        // Graphics 데이터 갱신 책임은 ResolutionList 로 분리
+        ResolutionList.SetByIndex(g, index);
     }
 
     //--------------------------------------------------------------------------

@@ -58,12 +58,8 @@ public class SettingsData
      */
     public void ClampWith(SettingsConfig config)
     {
-        if (config == null) return;
-
-        _graphics?.ClampWith(config);
-        _audio?.ClampWith(config);
-        _camera?.ClampWith(config);
-        _gameplay?.ClampWith(config);
+        // 범위 보정 책임은 SettingsClamp 로 분리
+        SettingsClamp.Apply(this, config);
     }
 
     //--------------------------------------------------------------------------
@@ -77,25 +73,8 @@ public class SettingsData
      */
     public bool MigrateToCurrent()
     {
-        bool changed = false;
-
-        // v0 → v1: Sensitivity 통합 → X/Y 분리
-        if (_version < 1)
-        {
-            if (_camera != null && _camera.LegacySensitivity > 0f)
-            {
-                _camera.SensitivityX = _camera.LegacySensitivity;
-                _camera.SensitivityY = _camera.LegacySensitivity;
-                _camera.ClearLegacySensitivity();
-            }
-
-            _version = 1;
-            changed = true;
-        }
-
-        // 향후: if (_version < 2) { ... _version = 2; changed = true; }
-
-        return changed;
+        // 마이그레이션 책임은 SettingsMigrate 로 분리
+        return SettingsMigrate.ToCurrent(this);
     }
 
     //==========================================================================

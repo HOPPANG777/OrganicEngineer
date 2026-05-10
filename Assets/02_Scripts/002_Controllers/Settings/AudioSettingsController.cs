@@ -62,32 +62,15 @@ public class AudioSettingsController : MonoBehaviour
 
         _current = a;
 
-        float master = a.Mute ? 0f : Mathf.Clamp01(a.MasterVolume);
-
-        if (_audioMixer != null)
-        {
-            TrySetMixerVolume(_masterVolumeParam, master);
-            TrySetMixerVolume(_bgmVolumeParam, Mathf.Clamp01(a.BgmVolume));
-            TrySetMixerVolume(_sfxVolumeParam, Mathf.Clamp01(a.SfxVolume));
-            TrySetMixerVolume(_voiceVolumeParam, Mathf.Clamp01(a.VoiceVolume));
-            TrySetMixerVolume(_uiVolumeParam, Mathf.Clamp01(a.UiVolume));
-            TrySetMixerVolume(_ambientVolumeParam, Mathf.Clamp01(a.AmbientVolume));
-        }
-        else
-        {
-            // 폴백: AudioListener에 마스터만 반영
-            AudioListener.volume = master;
-        }
+        // 실제 오디오 시스템 적용 책임은 AudioApply 로 분리
+        AudioApply.Apply(_audioMixer, a, _masterVolumeParam, _bgmVolumeParam, _sfxVolumeParam, _voiceVolumeParam, _uiVolumeParam, _ambientVolumeParam);
     }
 
     /// <summary>0~1 선형 볼륨을 dB로 변환해 AudioMixer 파라미터에 설정.</summary>
     private void TrySetMixerVolume(string param, float linear01)
     {
-        if (_audioMixer == null || string.IsNullOrEmpty(param)) return;
-
-        // 0이면 -80dB(거의 무음)로, 그 외에는 log10 변환
-        float db = linear01 <= 0.0001f ? -80f : Mathf.Log10(linear01) * 20f;
-        _audioMixer.SetFloat(param, db);
+        // Mixer 볼륨 변환 책임은 AudioApply 로 분리
+        AudioApply.SetMixerVolume(_audioMixer, param, linear01);
     }
 
     //==========================================================================
@@ -103,8 +86,7 @@ public class AudioSettingsController : MonoBehaviour
         if (!hasFocus)
         {
             // 일시 음소거: AudioListener 폴백 또는 마스터 채널 -80dB
-            if (_audioMixer != null) TrySetMixerVolume(_masterVolumeParam, 0f);
-            else AudioListener.volume = 0f;
+            AudioApply.SetMasterMute(_audioMixer, _masterVolumeParam, true);
         }
         else
         {

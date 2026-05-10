@@ -1,6 +1,6 @@
-using System; // Array.Sort 등 BCL
-using System.Collections.Generic; // List, Dictionary
-using UnityEngine; // Mesh, Plane, Vector*, Mathf
+using System;
+using System.Collections.Generic;
+using UnityEngine;
 
 namespace OrganicEngineer.MeshCutting
 {
@@ -163,10 +163,8 @@ namespace OrganicEngineer.MeshCutting
             int i0, int i1, int i2 // 원본 삼각형 정점 인덱스 세 개
         )
         {
-            int a = buffer.AddVertex(srcVec[i0], GetUV(srcUV, i0), GetNormal(srcNormal, i0)); // 새 정점 a
-            int b = buffer.AddVertex(srcVec[i1], GetUV(srcUV, i1), GetNormal(srcNormal, i1)); // 새 정점 b
-            int c = buffer.AddVertex(srcVec[i2], GetUV(srcUV, i2), GetNormal(srcNormal, i2)); // 새 정점 c
-            buffer.AddTriangle(a, b, c); // 와인딩은 원본과 동일한 순서
+            // 삼각형 복사 책임은 MeshCutTriangle 로 분리
+            MeshCutTriangle.Copy(buffer, srcVec, srcUV, srcNormal, i0, i1, i2);
         }
 
         //==============================================================================
@@ -307,38 +305,8 @@ namespace OrganicEngineer.MeshCutting
             int b
         )
         {
-            float dA = plane.GetDistanceToPoint(srcVec[a]); // a에서 평면까지 signed 거리
-            float dB = plane.GetDistanceToPoint(srcVec[b]); // b에서 평면까지 signed 거리
-
-            float denom = dA - dB; // t = dA/denom 형태의 분모
-            float t; // a→b 방향 보간 비율
-            if (Mathf.Abs(denom) < EdgeIntersectEpsilon)
-            {
-                t = 0.5f; // 분할 평면에 거의 평행한 모서리
-            }
-            else
-            {
-                t = dA / denom; // 평면과의 교차 비율
-            }
-
-            t = Mathf.Clamp01(t); // 세그먼트 구간 안으로 클램프
-
-            Vector3 pos = Vector3.Lerp(srcVec[a], srcVec[b], t);
-            Vector2 uv = Vector2.Lerp(GetUV(srcUV, a), GetUV(srcUV, b), t);
-
-            Vector3 na = GetNormal(srcNormal, a);
-            Vector3 nb = GetNormal(srcNormal, b);
-            Vector3 normal = Vector3.Lerp(na, nb, t);
-            if (normal.sqrMagnitude < EdgeIntersectEpsilon * EdgeIntersectEpsilon)
-            {
-                normal = Vector3.up; // 길이 0 근처면 기본값
-            }
-            else
-            {
-                normal.Normalize();
-            }
-
-            return (pos, uv, normal);
+            // 모서리 보간 책임은 MeshCutEdge 로 분리
+            return MeshCutEdge.Lerp(plane, srcVec, srcUV, srcNormal, a, b);
         }
 
         //==============================================================================
@@ -495,57 +463,8 @@ namespace OrganicEngineer.MeshCutting
         //==============================================================================
         static int[] ConvexHull2DIndices(List<Vector2> pts)
         {
-            int n = pts.Count;
-            if (n < 3)
-            {
-                return null;
-            }
-
-            int[] order = new int[n]; // 정렬용 인덱스 배열
-            for (int i = 0; i < n; i++)
-            {
-                order[i] = i;
-            }
-
-            Array.Sort(order, (i, j) =>
-            {
-                int cmp = pts[i].x.CompareTo(pts[j].x);
-                if (cmp != 0)
-                {
-                    return cmp;
-                }
-
-                return pts[i].y.CompareTo(pts[j].y);
-            });
-
-            var lower = new List<int>(); // 하단 껍질 체인
-            for (int i = 0; i < n; i++)
-            {
-                int idx = order[i];
-                while (lower.Count >= 2 && Cross2(pts[lower[lower.Count - 2]], pts[lower[lower.Count - 1]], pts[idx]) <= 0f)
-                {
-                    lower.RemoveAt(lower.Count - 1);
-                }
-
-                lower.Add(idx);
-            }
-
-            var upper = new List<int>(); // 상단 껍질 체인
-            for (int i = n - 1; i >= 0; i--)
-            {
-                int idx = order[i];
-                while (upper.Count >= 2 && Cross2(pts[upper[upper.Count - 2]], pts[upper[upper.Count - 1]], pts[idx]) <= 0f)
-                {
-                    upper.RemoveAt(upper.Count - 1);
-                }
-
-                upper.Add(idx);
-            }
-
-            lower.RemoveAt(lower.Count - 1); // 중복된 양 끝 제거
-            upper.RemoveAt(upper.Count - 1);
-            lower.AddRange(upper);
-            return lower.ToArray();
+            // 볼록 껍질 계산 책임은 MeshCutHull 로 분리
+            return MeshCutHull.ConvexHull2DIndices(pts);
         }
 
         //==============================================================================
@@ -557,7 +476,8 @@ namespace OrganicEngineer.MeshCutting
         //==============================================================================
         static float Cross2(Vector2 o, Vector2 a, Vector2 b)
         {
-            return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+            // 2D 외적 계산 책임은 MeshCutHull 로 분리
+            return MeshCutHull.Cross2(o, a, b);
         }
     }
 }

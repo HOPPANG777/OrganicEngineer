@@ -129,48 +129,14 @@ public class SettingsController : MonoBehaviour
             return;
         }
 
-        bool needsResave = false;
-
-        try
-        {
-            string json = await File.ReadAllTextAsync(path, ct);
-            SettingsData loaded = JsonUtility.FromJson<SettingsData>(json);
-
-            if (loaded == null)
-            {
-                Debug.LogWarning("[SettingsController] 저장 파일 파싱 실패. 기본값으로 복구합니다.");
-                _data = _config.CreateDefaultData();
-                needsResave = true;
-            }
-            else
-            {
-                // 마이그레이션: 구버전이면 끌어올린 후 자동 재저장 플래그
-                int prevVersion = loaded.Version;
-                if (loaded.MigrateToCurrent())
-                {
-                    Debug.Log($"[SettingsController] 설정 스키마 마이그레이션: v{prevVersion} → v{SettingsData.CURRENT_VERSION}");
-                    needsResave = true;
-                }
-
-                loaded.ClampWith(_config);
-                _data = loaded;
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"[SettingsController] 설정 로드 실패: {e.Message}. 기본값으로 복구합니다.");
-            _data = _config.CreateDefaultData();
-            needsResave = true;
-        }
+        // JSON 로드/마이그레이션 책임은 SettingsSave 로 분리
+        SettingsLoadResult loadResult = await SettingsSave.LoadAsync(path, _config, ct);
+        _data = loadResult.Data;
 
         _isLoaded = true;
 
         // 마이그레이션/복구가 일어났다면 디스크를 최신 스키마로 갱신
-        if (needsResave) await SaveAsync(ct);
+        if (loadResult.NeedsResave) await SaveAsync(ct);
     }
 
     /*
@@ -179,37 +145,8 @@ public class SettingsController : MonoBehaviour
      */
     public async UniTask SaveAsync(CancellationToken ct = default)
     {
-        if (_data == null)
-        {
-            Debug.LogWarning("[SettingsController] 저장할 데이터가 없습니다.");
-            return;
-        }
-
-        try
-        {
-            // 안전을 위해 저장 직전에도 Clamp 한 번 더
-            _data.ClampWith(_config);
-
-            string json = JsonUtility.ToJson(_data, prettyPrint: true);
-            string path = SavePath;
-
-            // 디렉토리 보장
-            string dir = Path.GetDirectoryName(path);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-            {
-                Directory.CreateDirectory(dir);
-            }
-
-            await File.WriteAllTextAsync(path, json, ct);
-        }
-        catch (OperationCanceledException)
-        {
-            throw;
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"[SettingsController] 설정 저장 실패: {e.Message}");
-        }
+        // JSON 저장 책임은 SettingsSave 로 분리
+        await SettingsSave.SaveAsync(SavePath, _data, _config, ct);
     }
 
     //==========================================================================
@@ -219,14 +156,8 @@ public class SettingsController : MonoBehaviour
     /// <summary>현재 _data를 각 서브 컨트롤러에 분배해 시스템에 반영.</summary>
     public void Apply()
     {
-        if (_data == null) return;
-
-        _graphics?.Apply(_data.GraphicsSetting);
-        _audio?.Apply(_data.AudioSetting);
-        _camera?.Apply(_data.CameraSetting);
-        _gameplay?.Apply(_data.GameplaySetting);
-
-        OnSettingsApplied?.Invoke();
+        // 카테고리별 적용 책임은 SettingsApply 로 분리
+        SettingsApply.Apply(_data, _graphics, _audio, _camera, _gameplay, OnSettingsApplied);
     }
 
     /// <summary>기본값으로 되돌리고(즉시 메모리 반영) 적용까지 수행. 저장은 별도 호출 필요.</summary>

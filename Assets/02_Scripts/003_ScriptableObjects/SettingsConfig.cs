@@ -193,54 +193,7 @@ public class SettingsConfig : ScriptableObject
      */
     public SettingsData CreateDefaultData()
     {
-        SettingsData data = new SettingsData
-        {
-            Version = SettingsData.CURRENT_VERSION,
-
-            GraphicsSetting = new SettingsData.Graphics
-            {
-                QualityLevel = _defaultQualityLevel,
-                ScreenModeValue = _defaultScreenMode,
-                ResolutionIndex = -1,
-                Width = 0,
-                Height = 0,
-                RefreshRate = 0,
-                TargetFrameRate = _defaultTargetFrameRate,
-                VSync = _defaultVSync,
-                AntiAliasing = _defaultAntiAliasing,
-                ShadowQuality = _defaultShadowLevel,
-                TextureQuality = _defaultTextureLevel,
-                Brightness = _defaultBrightness,
-            },
-            AudioSetting = new SettingsData.Audio
-            {
-                MasterVolume = _defaultMasterVolume,
-                BgmVolume = _defaultBgmVolume,
-                SfxVolume = _defaultSfxVolume,
-                VoiceVolume = _defaultVoiceVolume,
-                UiVolume = _defaultUiVolume,
-                AmbientVolume = _defaultAmbientVolume,
-                Mute = _defaultMute,
-                MuteOnFocusLost = _defaultMuteOnFocusLost,
-            },
-            CameraSetting = new SettingsData.Camera
-            {
-                SensitivityX = _defaultSensitivityX,
-                SensitivityY = _defaultSensitivityY,
-                AimSensitivityMultiplier = _defaultAimSensitivityMultiplier,
-                InvertX = _defaultInvertX,
-                InvertY = _defaultInvertY,
-                MouseSmoothing = _defaultMouseSmoothing,
-            },
-            GameplaySetting = new SettingsData.Gameplay
-            {
-                Language = _defaultLanguage,
-                Difficulty = _defaultDifficulty,
-                ShowFps = _defaultShowFps,
-            },
-        };
-
-        data.ClampWith(this);
-        return data;
+        // 기본 데이터 생성 책임은 SettingsDataFactory 로 분리
+        return SettingsDataFactory.CreateDefault(this);
     }
 }

@@ -73,13 +73,11 @@ public class GameRoot : Singleton<GameRoot>
 
         _isInitialized = true;
 
-        // 환경 설정
-        Application.targetFrameRate = 60;
+        // 환경 설정 책임은 GameBoot 로 분리
+        GameBoot.ApplyEnvironment();
 
-        if (_controllersRoot == null) Debug.LogWarning("[GameRoot] ControllersRoot가 없습니다.");
-        if (_sceneFlowController == null) Debug.LogWarning("[GameRoot] SceneFlowController가 없습니다.");
-        if (_settingsController == null) Debug.LogWarning("[GameRoot] SettingsController가 없습니다.");
-        if (_optionsScreen == null) Debug.LogWarning("[GameRoot] OptionsScreen이 없습니다.");
+        // 필수 참조 검증 책임은 GameBoot 로 분리
+        GameBoot.ValidateReferences(_controllersRoot, _sceneFlowController, _settingsController, _optionsScreen);
     }
 
     //--------------------------------------------------------------------------

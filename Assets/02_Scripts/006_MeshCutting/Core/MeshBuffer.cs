@@ -1,5 +1,5 @@
-using System.Collections.Generic; // List<T>
-using UnityEngine; // Mesh, Vector3, Vector2
+using System.Collections.Generic;
+using UnityEngine;
 
 namespace OrganicEngineer.MeshCutting
 {

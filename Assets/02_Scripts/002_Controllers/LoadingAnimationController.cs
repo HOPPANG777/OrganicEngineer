@@ -1,6 +1,6 @@
-using UnityEngine;              // Unity 기본 엔진 기능 사용
-using UnityEngine.UI;           // UI(Image 등) 관련 기능 사용
-using Sirenix.OdinInspector;    // Odin Inspector 사용 (인스펙터 정리용)
+using UnityEngine;
+using UnityEngine.UI;
+using Sirenix.OdinInspector;
 
 //==============================================================================
 // LoadingAnimationController : 로딩 에니메이션 출력 컨트롤러

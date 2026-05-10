@@ -1,7 +1,6 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 //==============================================================================
 // BootLoader: BootScene 진입 스크립트
@@ -43,21 +42,9 @@ public class BootLoader : MonoBehaviour
      */
     private async UniTaskVoid BootAsync(CancellationToken ct)
     {
-        // GameRoot는 자동 생성 금지이므로 BootScene에 반드시 배치되어 있어야 합니다.
-        if (!GameRoot.TryGetInstance(out GameRoot root) || root == null)
-        {
-            Debug.LogError("[BootLoader] GameRoot를 찾지 못했습니다. BootScene에 GameRoot를 배치하세요.");
-            return;
-        }
-
-        // 전역 초기화
-        root.InitializeIfNeeded();
-
-        // 설정 로드 + 적용 (파일 I/O이므로 비동기)
-        if (root.Settings != null)
-        {
-            await root.Settings.LoadAndApplyAsync(ct);
-        }
+        // 초기화 순서는 BootSequence 로 분리
+        bool bootSucceeded = await BootSequence.RunAsync(ct);
+        if (!bootSucceeded) return;
 
         // 씬 전환
         RequestLoadNextScene();
@@ -76,10 +63,7 @@ public class BootLoader : MonoBehaviour
         // 아니라면 이미 매니지먼트 컨트롤러 로딩 끝났으니까 트루로 바꾸고
         _requestedSceneLoad = true;
 
-        // SceneFlow 컨트롤러에 현재 씬 이름 입력하고
-        GameRoot.Instance.SceneFlow.CurrentScene(_nextSceneConfig);
-
-        // 단순 동기 로드(필요해지면 Async로 확장)
-        SceneManager.LoadScene(_nextSceneConfig.SceneName);
+        // 다음 씬 로드 책임은 BootScene 으로 분리
+        BootScene.LoadNext(_nextSceneConfig);
     }
 }

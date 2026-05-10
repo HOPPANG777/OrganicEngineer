@@ -119,14 +119,8 @@ public abstract class FadeBaseController : MonoBehaviour
 
         _fillValue = IsBack ? Mathf.Lerp(1f, 0f, ct) : Mathf.Lerp(0f, 1f, ct);
 
-        if (_fadeImage != null)
-        {
-            _fadeImage.fillAmount = _fillValue;
-        }
-        else if (_fadePanel != null)
-        {
-            _fadePanel.anchoredPosition = Vector2.Lerp(_startPos, _endPos, ct);
-        }
+        // 실제 UI 값 적용은 FadeView 로 분리
+        FadeView.Apply(_fadeImage, _fadePanel, _startPos, _endPos, _fillValue, ct);
 
         if (t >= 1f)
         {
@@ -215,45 +209,22 @@ public abstract class FadeBaseController : MonoBehaviour
     // 시작 상태(위치/채우기)를 세팅하기
     protected void SetupStartValue()
     {
-        if (_fadeImage != null)
-        {
-            _fadeImage.type = Image.Type.Filled;
-            _fadeImage.fillMethod = Image.FillMethod.Horizontal;
-            _fadeImage.fillOrigin = FromLeftToRight ? 0 : 1;
-            _fadeImage.fillAmount = IsBack ? 1f : 0f;
-            return;
-        }
-
-        RectTransform parent = _fadePanel.parent as RectTransform;
-        float width = parent != null ? parent.rect.width : Screen.width;
-
-        if (IsBack)
-        {
-            _startPos = Vector2.zero;
-            _endPos = FromLeftToRight ? new Vector2(-width, 0f) : new Vector2(width, 0f);
-        }
-        else
-        {
-            _startPos = FromLeftToRight ? new Vector2(-width, 0f) : new Vector2(width, 0f);
-            _endPos = Vector2.zero;
-        }
-        _fadePanel.anchoredPosition = _startPos;
+        // 시작 값 계산과 UI 세팅은 FadeView 로 분리
+        FadeView.SetupStartValue(_fadePanel, _fadeImage, FromLeftToRight, IsBack, out _startPos, out _endPos);
     }
 
     // 페이드 중 입력을 막기
     protected void StartInputBlock()
     {
-        if (_fadeImage == null) return;
-        if (!GetBlockRaycastDuringFade()) return;
-        _fadeImage.raycastTarget = true;
+        // 입력 차단 적용은 FadeBlock 으로 분리
+        FadeBlock.Set(_fadeImage, GetBlockRaycastDuringFade(), true);
     }
 
     // 페이드가 끝나면 입력 막기를 풀기
     protected void StopInputBlock()
     {
-        if (_fadeImage == null) return;
-        if (!GetBlockRaycastDuringFade()) return;
-        _fadeImage.raycastTarget = false;
+        // 입력 차단 해제는 FadeBlock 으로 분리
+        FadeBlock.Set(_fadeImage, GetBlockRaycastDuringFade(), false);
     }
 }
 

@@ -1,6 +1,5 @@
-using System.Collections.Generic; // List<GameObject>
-using UnityEngine; // MonoBehaviour, Mesh, Plane 등
-using Sirenix.OdinInspector; // Button, Tooltip, 제약 속성
+using UnityEngine;
+using Sirenix.OdinInspector;
 
 namespace OrganicEngineer.MeshCutting.Sandbox
 {
@@ -30,14 +29,16 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         [Tooltip("단면(서브메시 1) 머티리얼. 비우면 pieceMaterial과 동일")]
         [SerializeField] Material capMaterial;
 
+        // 조각 생성 컴포넌트
+        [Tooltip("잘린 조각 GameObject 생성과 목록 관리를 담당")]
+        [SerializeField] MeshCutPieceSpawn pieceSpawn;
+
         // 원본 메시
         Mesh _originalMesh;
         // 원본 메시 재료
         Material[] _originalMaterials;
         // 절개 상태
         bool _isCut;
-        // 생성된 조각 게임 오브젝트 리스트
-        readonly List<GameObject> _spawned = new List<GameObject>();
 
         //==============================================================================
         // 기능: MeshCutSandboxController::Cut
@@ -76,13 +77,8 @@ namespace OrganicEngineer.MeshCutting.Sandbox
             // Cut 직전 원본 Mesh 참조 저장
             _originalMesh = target.sharedMesh;
 
-            // 월드 공간 평면(up=법선, position=평면 상의 점)
-            Plane worldPlane = new Plane(cutter.up, cutter.position);
-
             // MeshCutter 에 전달할 타겟 로컬 평면
-            Vector3 localNormal = target.transform.InverseTransformDirection(worldPlane.normal).normalized;
-            Vector3 localPoint = target.transform.InverseTransformPoint(cutter.position);
-            Plane localPlane = new Plane(localNormal, localPoint);
+            Plane localPlane = CutPlaneConvert.WorldToLocal(target, cutter);
 
             // 정적 절단 진입
             CutResult result = MeshCutter.Cut(target.sharedMesh, localPlane);
@@ -145,14 +141,8 @@ namespace OrganicEngineer.MeshCutting.Sandbox
                 4. _isCut = false;
             */
 
-            // 순서대로 스폰 목록 순회 후 파괴
-            for (int i = 0; i < _spawned.Count; i++)
-            {
-                Destroy(_spawned[i]);
-            }
-
             // 생성된 조각 리스트 초기화
-            _spawned.Clear();
+            EnsurePieceSpawn().Clear();
 
             // 원본 메시 활성화
             target.gameObject.SetActive(true);
@@ -171,57 +161,32 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         // 조각 생성
         void SpawnPiece(Mesh m, string suffix)
         {
-            if (m == null)
-            {
-                Debug.LogWarning($"[MeshCut] SpawnPiece 스킵: 메시 null ({suffix}).");
+            // 조각 생성 책임은 MeshCutPieceSpawn 으로 분리
+            EnsurePieceSpawn().Spawn(target, m, suffix, pieceMaterial, capMaterial);
+        }
 
-                return;
+        //==============================================================================
+        // 기능: MeshCutSandboxController::EnsurePieceSpawn
+        // 설명: 조각 생성 컴포넌트가 없으면 같은 GameObject 에 자동으로 붙여 반환한다.
+        //==============================================================================
+        // TODO: 인스펙터 명시 연결만 허용할지 정책 결정
+        //
+        //==============================================================================
+        MeshCutPieceSpawn EnsurePieceSpawn()
+        {
+            // 이미 연결된 컴포넌트가 있으면 그대로 사용
+            if (pieceSpawn != null) return pieceSpawn;
+
+            // 같은 GameObject 에 붙어 있는 컴포넌트 검색
+            pieceSpawn = GetComponent<MeshCutPieceSpawn>();
+
+            // 없으면 런타임에 추가해 기존 씬 연결 없이도 동작 보존
+            if (pieceSpawn == null)
+            {
+                pieceSpawn = gameObject.AddComponent<MeshCutPieceSpawn>();
             }
 
-            /*
-                1. GameObject go = new GameObject(target.name + "_" + suffix);
-
-                2. go.transform 을 target.transform 과 동일하게 복사(parent + local TRS)
-
-                3. MeshFilter mf = go.AddComponent<MeshFilter>(); mf.sharedMesh = m;
-
-                4. MeshRenderer: 서브메시 2개면 외피/단면 머티리얼 2개
-
-                5. _spawned.Add(go);
-            */
-
-            // 조각 게임 오브젝트 생성
-            GameObject go = new GameObject(target.name + "_" + suffix);
-
-            // 조각 게임 오브젝트 위치, 회전, 스케일, 부모 설정 (target 과 동일 계층)
-            Transform tt = target.transform;
-
-            go.transform.SetParent(tt.parent, false);
-            go.transform.localPosition = tt.localPosition;
-            go.transform.localRotation = tt.localRotation;
-            go.transform.localScale = tt.localScale;
-
-            // 조각 게임 오브젝트 MeshFilter 컴포넌트 추가
-            MeshFilter mf = go.AddComponent<MeshFilter>();
-            mf.sharedMesh = m;
-
-            // 조각 게임 오브젝트 MeshRenderer 컴포넌트 추가
-            MeshRenderer mr = go.AddComponent<MeshRenderer>();
-            MeshRenderer srcMr = target.GetComponent<MeshRenderer>();
-            Material shellMat = pieceMaterial != null ? pieceMaterial : srcMr.sharedMaterial;
-            Material capMat = capMaterial != null ? capMaterial : shellMat;
-
-            if (m.subMeshCount > 1)
-            {
-                mr.sharedMaterials = new[] { shellMat, capMat };
-            }
-            else
-            {
-                mr.sharedMaterial = shellMat;
-            }
-
-            // 생성된 조각 게임 오브젝트 리스트에 추가
-            _spawned.Add(go);
+            return pieceSpawn;
         }
     }
 }

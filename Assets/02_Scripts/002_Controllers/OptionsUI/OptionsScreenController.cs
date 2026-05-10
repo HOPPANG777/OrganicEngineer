@@ -2,9 +2,6 @@ using Cysharp.Threading.Tasks;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.UI;
-#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-using UnityEngine.InputSystem;
-#endif
 
 //==============================================================================
 // OptionsScreenController: 옵션 화면 진입점
@@ -141,7 +138,8 @@ public class OptionsScreenController : MonoBehaviour
             return;
         }
 
-        for (int i = 0; i < _tabs.Length; i++) _tabs[i]?.Bind(_settings);
+        // 탭 바인딩 책임은 OptionsTab 으로 분리
+        OptionsTab.BindAll(_tabs, _settings);
 
         if (_applyButton != null)        _applyButton.onClick.AddListener(OnApplyClicked);
         if (_cancelButton != null)       _cancelButton.onClick.AddListener(OnCancelClicked);
@@ -176,7 +174,8 @@ public class OptionsScreenController : MonoBehaviour
         _originalJson = JsonUtility.ToJson(_settings.Data);
 
         // 모든 탭의 UI를 현재 데이터로 동기화
-        for (int i = 0; i < _tabs.Length; i++) _tabs[i]?.Refresh();
+        // 모든 탭 UI 새로고침 책임은 OptionsTab 으로 분리
+        OptionsTab.RefreshAll(_tabs);
 
         SwitchTab(0);
 
@@ -240,7 +239,8 @@ public class OptionsScreenController : MonoBehaviour
 
         _settings.ResetToDefault();
 
-        for (int i = 0; i < _tabs.Length; i++) _tabs[i]?.Refresh();
+        // Reset 후 모든 탭 UI 새로고침
+        OptionsTab.RefreshAll(_tabs);
     }
 
     //==========================================================================
@@ -266,49 +266,9 @@ public class OptionsScreenController : MonoBehaviour
      */
     private bool IsToggleKeyPressedThisFrame()
     {
-#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-        Keyboard kb = Keyboard.current;
-        if (kb == null) return false;
-        return MapAndCheckKey(kb, _toggleKey);
-#else
-        return Input.GetKeyDown(_toggleKey);
-#endif
+        // 입력 시스템별 키 감지는 OptionsHotkey 로 분리
+        return OptionsHotkey.IsPressedThisFrame(_toggleKey);
     }
-
-#if ENABLE_INPUT_SYSTEM && !ENABLE_LEGACY_INPUT_MANAGER
-    /// <summary>KeyCode → InputSystem.Keyboard 매핑(흔히 쓰는 키만). 매핑 없으면 ESC로 폴백.</summary>
-    private static bool MapAndCheckKey(Keyboard kb, KeyCode key)
-    {
-        switch (key)
-        {
-            case KeyCode.Escape:    return kb.escapeKey.wasPressedThisFrame;
-            case KeyCode.Tab:       return kb.tabKey.wasPressedThisFrame;
-            case KeyCode.Return:    return kb.enterKey.wasPressedThisFrame;
-            case KeyCode.KeypadEnter: return kb.numpadEnterKey.wasPressedThisFrame;
-            case KeyCode.Space:     return kb.spaceKey.wasPressedThisFrame;
-            case KeyCode.BackQuote: return kb.backquoteKey.wasPressedThisFrame;
-            case KeyCode.F1:        return kb.f1Key.wasPressedThisFrame;
-            case KeyCode.F2:        return kb.f2Key.wasPressedThisFrame;
-            case KeyCode.F3:        return kb.f3Key.wasPressedThisFrame;
-            case KeyCode.F4:        return kb.f4Key.wasPressedThisFrame;
-            case KeyCode.F5:        return kb.f5Key.wasPressedThisFrame;
-            case KeyCode.F10:       return kb.f10Key.wasPressedThisFrame;
-            case KeyCode.F11:       return kb.f11Key.wasPressedThisFrame;
-            case KeyCode.F12:       return kb.f12Key.wasPressedThisFrame;
-            default:
-                // 매핑되지 않은 키는 ESC로 폴백 + 1회 경고
-                if (!s_warnedUnmappedKey)
-                {
-                    Debug.LogWarning($"[OptionsScreen] KeyCode.{key}는 New Input System 매핑에 없습니다. Escape로 폴백합니다.");
-                    s_warnedUnmappedKey = true;
-                }
-                return kb.escapeKey.wasPressedThisFrame;
-        }
-    }
-
-    /// <summary>매핑 미존재 경고 1회만 표시하기 위한 플래그.</summary>
-    private static bool s_warnedUnmappedKey;
-#endif
 
     //==========================================================================
     // [7] 탭 전환
@@ -317,9 +277,7 @@ public class OptionsScreenController : MonoBehaviour
     /// <summary>탭 인덱스에 해당하는 패널만 활성화.</summary>
     private void SwitchTab(int index)
     {
-        for (int i = 0; i < _tabs.Length; i++)
-        {
-            _tabs[i]?.SetTabActive(i == index);
-        }
+        // 탭 전환 책임은 OptionsTab 으로 분리
+        OptionsTab.Switch(_tabs, index);
     }
 }

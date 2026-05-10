@@ -120,22 +120,8 @@ namespace OrganicEngineer.MeshCutting.CutCamera
         //==============================================================================
         private Bounds CalculateAnchorBounds()
         {
-            // 활성화된 자식 Renderer 만 모음
-            Renderer[] renderers = _monsterAnchor.GetComponentsInChildren<Renderer>(false);
-
-            // Renderer 가 없으면 anchor 위치 기준 0 크기 Bounds 반환(상위에서 가드)
-            if (renderers == null || renderers.Length == 0)
-            {
-                return new Bounds(_monsterAnchor.position, Vector3.zero);
-            }
-
-            // 첫 번째 Renderer 로 시작 → 나머지를 for 루프로 Encapsulate(컨벤션 2.2)
-            Bounds combined = renderers[0].bounds;
-            for (int i = 1; i < renderers.Length; i++)
-            {
-                combined.Encapsulate(renderers[i].bounds);
-            }
-            return combined;
+            // Bounds 계산 책임은 CutBounds 로 분리
+            return CutBounds.Calculate(_monsterAnchor);
         }
 
         //==============================================================================
@@ -232,11 +218,8 @@ namespace OrganicEngineer.MeshCutting.CutCamera
         //==============================================================================
         private float ComputeOrthoSize(float halfH, float halfW, float aspect)
         {
-            // aspect 가 비정상(0 이하)이면 안전한 기본값(1)으로 보정
-            if (aspect <= 0f) aspect = 1f;
-
-            // 세로 기준과 (가로 / aspect) 기준 중 더 큰 쪽을 채택해 잘림 방지
-            return Mathf.Max(halfH, halfW / aspect) * _paddingRatio;
+            // OrthographicSize 계산 책임은 CutCameraSize 로 분리
+            return CutCameraSize.ComputeOrtho(halfH, halfW, aspect, _paddingRatio);
         }
     }
 }
