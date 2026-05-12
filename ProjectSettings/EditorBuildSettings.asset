@@ -9,28 +9,28 @@ EditorBuildSettings:
     path: Assets/Scenes/SampleScene.unity
     guid: 99c9720ab356a0642a771bea13969a05
   - enabled: 1
-    path: Assets/00_Scenes/BootScene.unity
+    path: Assets/_Game/Scenes/BootScene.unity
     guid: bd2a80d66ce5b394caececfb8305108e
   - enabled: 1
-    path: Assets/00_Scenes/TitleScene.unity
+    path: Assets/_Game/Scenes/TitleScene.unity
     guid: 34aa8bc79f8d06340a452f8a7119e77e
   - enabled: 1
-    path: Assets/00_Scenes/LobbyScene.unity
+    path: Assets/_Game/Scenes/LobbyScene.unity
     guid: 62b8c84ec74da5d4f9bbaa132a18f5e6
   - enabled: 1
-    path: Assets/00_Scenes/GameBattleScene.unity
+    path: Assets/_Game/Scenes/GameBattleScene.unity
     guid: d9a8b46bf8beb6e448b57c635fbebee2
   - enabled: 1
-    path: Assets/00_Scenes/GameDissectionScene.unity
+    path: Assets/_Game/Scenes/GameDissectionScene.unity
     guid: 5d48b30cfaf699d4d965cb8592bec1f2
   - enabled: 1
-    path: Assets/00_Scenes/GameAssemblyScene.unity
+    path: Assets/_Game/Scenes/GameAssemblyScene.unity
     guid: c109b35993850384c91a989f66117499
   - enabled: 1
-    path: Assets/00_Scenes/GameAnalysisScene.unity
+    path: Assets/_Game/Scenes/GameAnalysisScene.unity
     guid: 6e76d4132ba0aa341bcbbf7211a0741c
   - enabled: 1
-    path: Assets/00_Scenes/CreditsScene.unity
+    path: Assets/_Game/Scenes/CreditsScene.unity
     guid: 24ec09059b87c0544a3515628eb522fc
   m_configObjects:
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}

@@ -64,6 +64,17 @@ namespace OrganicEngineer.MeshCutting.CutCamera
         // 측면 카메라 배열의 길이(없거나 비어 있으면 0)
         public int SideCameraCount { get => _sideCamera == null ? 0 : _sideCamera.Length; }
 
+        // 컷 입력·규칙 C 에 쓸 단일 참조: 측면이 켜져 있으면 활성 측면(Q/E 반영), 아니면 탑.
+        public Camera ActiveCutCamera
+        {
+            get
+            {
+                Camera side = ActiveSideCamera;
+                if (side != null) return side;
+                return _topCamera;
+            }
+        }
+
         // 슬롯 인덱스로 측면 카메라 한 대를 반환(범위 밖이거나 null 이면 null)
         public Camera GetSideCamera(int index)
         {
