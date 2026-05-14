@@ -54,6 +54,74 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         // 절개 상태
         private bool _isCut;
 
+        // 드래그 컷 등에서 레이 대상 검증 시 사용한다(원본 앵커).
+        public MeshFilter CutTargetMeshFilter => _target;
+
+        // 한 번이라도 Cut 이 성공하면 true(Reset 전까지).
+        public bool HasCutCompleted => _isCut;
+
+        // 스폰된 조각 수(진단·HUD).
+        public int SpawnedPieceCount => _pieceSpawn != null ? _pieceSpawn.SpawnedCount : 0;
+
+        // Raycast 피판이 현재 자를 수 있는 MeshFilter(원본 활성 또는 스폰 조각)일 때만 true.
+        public bool IsRayHitOnCutTarget(in RaycastHit hit)
+        {
+            return TryResolveCutMeshFilterFromHit(hit, out _);
+        }
+
+        //==============================================================================
+        // 기능: MeshCutSandboxController::TryResolveCutMeshFilterFromHit
+        // 설명: 히트가 절단 가능한 표면이면 해당 MeshFilter 를 반환한다.
+        //==============================================================================
+        public bool TryResolveCutMeshFilterFromHit(in RaycastHit hit, out MeshFilter cutSource)
+        {
+            cutSource = null;
+            if (hit.collider == null) return false;
+            MeshFilter owner = hit.collider.GetComponentInParent<MeshFilter>();
+            if (!IsValidCutMeshFilter(owner)) return false;
+            cutSource = owner;
+            return true;
+        }
+
+        private bool IsValidCutMeshFilter(MeshFilter mf)
+        {
+            if (mf == null || mf.sharedMesh == null) return false;
+            if (_target != null && mf == _target)
+                return _target.gameObject.activeInHierarchy;
+            return EnsurePieceSpawn().IsSpawnedMeshFilter(mf);
+        }
+
+        //==============================================================================
+        // 기능: MeshCutSandboxController::TryCutFromWorldPlane
+        // 설명: 활성 원본만 대상으로 하는 편의 오버로드(첫 컷·테스트용).
+        //==============================================================================
+        public bool TryCutFromWorldPlane(Vector3 worldNormal, Vector3 worldPointOnPlane)
+        {
+            if (_target == null || !_target.gameObject.activeInHierarchy) return false;
+            return TryCutFromWorldPlane(worldNormal, worldPointOnPlane, _target);
+        }
+
+        //==============================================================================
+        // 기능: MeshCutSandboxController::TryCutFromWorldPlane
+        // 설명: 월드 법선(+쪽)·평면 위 점으로 규칙 C 등에서 만든 평면을 cutSource 로컬로 바꿔 Cut 한다.
+        // Straddling 이고 조각까지 스폰되면 true.
+        //==============================================================================
+        public bool TryCutFromWorldPlane(Vector3 worldNormal, Vector3 worldPointOnPlane, MeshFilter cutSource)
+        {
+            if (cutSource == null || cutSource.sharedMesh == null) return false;
+            if (!IsValidCutMeshFilter(cutSource)) return false;
+            if (worldNormal.sqrMagnitude < 1e-14f)
+            {
+                Debug.LogWarning("[MeshCut] 드래그 컷 스킵: 법선 길이 0.");
+                return false;
+            }
+
+            worldNormal.Normalize();
+            _originalMesh = cutSource.sharedMesh;
+            Plane localPlane = _cutPlaneConvert.WorldToLocal(cutSource, worldNormal, worldPointOnPlane);
+            return TryCutInternal(localPlane, cutSource);
+        }
+
         //==============================================================================
         // 기능: MeshCutSandboxController::Cut
         // 설명: 월드 평면을 메시 로컬로 바꿔 멤버 절단 기능을 호출하고, Straddling 일 때만 조각 GO를 스폰한 뒤 타겟을 비활성화한다.
@@ -78,47 +146,56 @@ namespace OrganicEngineer.MeshCutting.Sandbox
             // Cut 직전 원본 Mesh 참조 저장
             _originalMesh = _target.sharedMesh;
 
-            // MeshCutter 에 전달할 타겟 로컬 평면
             Plane localPlane = _cutPlaneConvert.WorldToLocal(_target, _cutter);
+            TryCutInternal(localPlane, _target);
+        }
 
-            // 멤버 절단 기능으로 절단 실행
-            CutResult result = _meshCutter.Cut(_target.sharedMesh, localPlane);
+        //==============================================================================
+        // 기능: MeshCutSandboxController::TryCutInternal
+        // 설명: 이미 cutSource 로컬인 평면으로 MeshCutter 를 호출하고 성공 시 스폰까지 마친다.
+        //==============================================================================
+        private bool TryCutInternal(Plane localPlane, MeshFilter cutSource)
+        {
+            CutResult result = _meshCutter.Cut(cutSource.sharedMesh, localPlane);
 
-            // 실제로 평면이 메시를 가를 때만 게임오브젝트 스폰
             if (result.relation != CutPlaneRelation.Straddling)
             {
-                switch (result.relation)
-                {
-                    case CutPlaneRelation.EmptySource:
-                        Debug.LogWarning("[MeshCut] 절단할 메시가 비어 있음.");
-                        break;
-
-                    case CutPlaneRelation.EntirelyAbove:
-                        Debug.LogWarning("[MeshCut] 평면이 메시를 스치지 않음(전부 법선 +쪽).");
-                        break;
-
-                    case CutPlaneRelation.EntirelyBelow:
-                        Debug.LogWarning("[MeshCut] 평면이 메시를 스치지 않음(전부 법선 반대쪽).");
-                        break;
-
-                    default:
-                        Debug.LogWarning("[MeshCut] 알 수 없는 분류: " + result.relation);
-                        break;
-                }
-
-                return;
+                LogNonStraddling(result.relation);
+                return false;
             }
 
-            // 법선 +쪽 조각
-            SpawnPiece(result.aboveMesh, "Above");
-            // 반대쪽 조각
-            SpawnPiece(result.belowMesh, "Below");
+            SpawnPiece(cutSource, result.aboveMesh, "Above");
+            SpawnPiece(cutSource, result.belowMesh, "Below");
 
-            // 원본 타겟은 화면/피직스에서 숨김(sharedMesh 교체 안 함)
-            _target.gameObject.SetActive(false);
+            if (cutSource == _target)
+                _target.gameObject.SetActive(false);
+            else
+                EnsurePieceSpawn().DestroySpawnedOwning(cutSource);
 
-            // Cut 버튼 비활성화용 상태
             _isCut = true;
+            return true;
+        }
+
+        private static void LogNonStraddling(CutPlaneRelation relation)
+        {
+            switch (relation)
+            {
+                case CutPlaneRelation.EmptySource:
+                    Debug.LogWarning("[MeshCut] 절단할 메시가 비어 있음.");
+                    break;
+
+                case CutPlaneRelation.EntirelyAbove:
+                    Debug.LogWarning("[MeshCut] 평면이 메시를 스치지 않음(전부 법선 +쪽).");
+                    break;
+
+                case CutPlaneRelation.EntirelyBelow:
+                    Debug.LogWarning("[MeshCut] 평면이 메시를 스치지 않음(전부 법선 반대쪽).");
+                    break;
+
+                default:
+                    Debug.LogWarning("[MeshCut] 알 수 없는 분류: " + relation);
+                    break;
+            }
         }
 
         // 모든 조각 초기화
@@ -151,14 +228,14 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         // 기능: MeshCutSandboxController::SpawnPiece
         // 설명: 주어진 Mesh 로 동일 로컬 TRS 로 GameObject와 MeshFilter·MeshRenderer를 붙이고 머티리얼을 서브메시 수에 맞게 할당 후 _spawned에 추가한다.
         //==============================================================================
-        // TODO: MeshCollider 복사, shadowCastingMode, 레이어/태그 설정
+        // TODO: shadowCastingMode, 레이어/태그 설정
         //
         //==============================================================================
         // 조각 생성
-        private void SpawnPiece(Mesh m, string suffix)
+        private void SpawnPiece(MeshFilter trsSource, Mesh m, string suffix)
         {
             // 조각 생성 책임은 MeshCutPieceSpawn 으로 분리
-            EnsurePieceSpawn().Spawn(_target, m, suffix, _pieceMaterial, _capMaterial);
+            EnsurePieceSpawn().Spawn(trsSource, m, suffix, _pieceMaterial, _capMaterial);
         }
 
         //==============================================================================

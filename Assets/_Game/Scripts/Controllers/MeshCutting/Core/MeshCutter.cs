@@ -157,8 +157,10 @@ namespace OrganicEngineer.MeshCutting
             // 실제 절단이 있으면 양쪽 캡을 생성
             if (straddling)
             {
-                _meshCutCap.Append(above, result.aboveCapEdges, planeNormal);
-                _meshCutCap.Append(below, result.belowCapEdges, -planeNormal);
+                // Above 조각의 고체는 평면 +법선 쪽이므로, 단면 바깥(절제된 반대 공간)을 향하는 법선은 -planeNormal.
+                // Below 는 반대. 여기를 뒤집으면 캡 와인딩·정점 노멀이 안쪽을 향해 텍스처가 '속면'처럼 보인다.
+                _meshCutCap.Append(above, result.aboveCapEdges, -planeNormal);
+                _meshCutCap.Append(below, result.belowCapEdges, planeNormal);
                 result.relation = CutPlaneRelation.Straddling;
                 return;
             }

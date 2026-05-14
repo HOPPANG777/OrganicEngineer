@@ -15,9 +15,6 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         // 기능: CutPlaneConvert::WorldToLocal
         // 설명: cutter.up/cutter.position 으로 만든 월드 평면을 target 로컬 Plane 으로 변환한다.
         //==============================================================================
-        // TODO: cutter 대신 명시적 normal/point 입력 오버로드 추가
-        //
-        //==============================================================================
         public Plane WorldToLocal(MeshFilter target, Transform cutter)
         {
             // 월드 공간 평면 생성
@@ -30,6 +27,17 @@ namespace OrganicEngineer.MeshCutting.Sandbox
             Vector3 localPoint = target.transform.InverseTransformPoint(cutter.position);
 
             // Unity Plane 은 법선과 점으로 로컬 평면 구성
+            return new Plane(localNormal, localPoint);
+        }
+
+        //==============================================================================
+        // 기능: CutPlaneConvert::WorldToLocal
+        // 설명: 월드 법선(정규화)·평면 위 한 점으로 만든 평면을 target 로컬 Plane 으로 변환한다.
+        //==============================================================================
+        public Plane WorldToLocal(MeshFilter target, Vector3 worldNormalNormalized, Vector3 worldPointOnPlane)
+        {
+            Vector3 localNormal = target.transform.InverseTransformDirection(worldNormalNormalized).normalized;
+            Vector3 localPoint = target.transform.InverseTransformPoint(worldPointOnPlane);
             return new Plane(localNormal, localPoint);
         }
     }

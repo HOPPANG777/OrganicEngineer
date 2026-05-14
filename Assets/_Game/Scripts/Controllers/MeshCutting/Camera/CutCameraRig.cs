@@ -83,6 +83,46 @@ namespace OrganicEngineer.MeshCutting.CutCamera
             return _sideCamera[index];
         }
 
+        //==============================================================================
+        // 기능: CutCameraRig::GetRayCameraForScreenPoint
+        // 설명: 스크린 픽셀 좌표가 들어있는 Camera.pixelRect 패널에 대응하는 카메라를 고른다.
+        // 분할 탑·측면 뷰에서 ActiveCutCamera(측면)만으로 ScreenPointToRay 하면 탑 패널 클릭이 빗나간다.
+        // 우선순위: 활성 컷 카메라 패널 → 탑 패널 → 활성화된 임의 측면 패널 → ActiveCutCamera.
+        //==============================================================================
+        public Camera GetRayCameraForScreenPoint(Vector2 screenPositionPixels)
+        {
+            Camera activeCut = ActiveCutCamera;
+            if (IsSelectableRayCamera(activeCut) && PixelRectContainsScreenPoint(activeCut, screenPositionPixels))
+                return activeCut;
+
+            if (IsSelectableRayCamera(_topCamera) && PixelRectContainsScreenPoint(_topCamera, screenPositionPixels))
+                return _topCamera;
+
+            if (_sideCamera != null)
+            {
+                for (int i = 0; i < _sideCamera.Length; i++)
+                {
+                    Camera c = _sideCamera[i];
+                    if (!IsSelectableRayCamera(c))
+                        continue;
+                    if (PixelRectContainsScreenPoint(c, screenPositionPixels))
+                        return c;
+                }
+            }
+
+            return activeCut != null ? activeCut : _topCamera;
+        }
+
+        private static bool IsSelectableRayCamera(Camera c)
+        {
+            return c != null && c.isActiveAndEnabled;
+        }
+
+        private static bool PixelRectContainsScreenPoint(Camera cam, Vector2 screenPositionPixels)
+        {
+            return cam.pixelRect.Contains(screenPositionPixels);
+        }
+
         //-------------------- 기능 함수 --------------------//
 
         private void Awake()
