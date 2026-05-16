@@ -18,7 +18,17 @@ namespace OrganicEngineer.MeshCutting
         // TODO: 추가 버텍스 채널 복사
         //
         //==============================================================================
-        public void Copy(MeshBuffer buffer, Vector3[] srcVec, Vector2[] srcUV, Vector3[] srcNormal, int i0, int i1, int i2)
+        public void Copy
+        (
+            MeshBuffer buffer,
+            Vector3[] srcVec,
+            Vector2[] srcUV,
+            Vector3[] srcNormal,
+            int i0,
+            int i1,
+            int i2,
+            bool isCap
+        )
         {
             // 원본 정점 3개를 새 버퍼 정점으로 추가
             int a = buffer.AddVertex(srcVec[i0], GetUV(srcUV, i0), GetNormal(srcNormal, i0));
@@ -26,7 +36,7 @@ namespace OrganicEngineer.MeshCutting
             int c = buffer.AddVertex(srcVec[i2], GetUV(srcUV, i2), GetNormal(srcNormal, i2));
 
             // 원본과 같은 순서로 삼각형 추가
-            buffer.AddTriangle(a, b, c);
+            buffer.AddTriangle(a, b, c, isCap);
         }
 
         // UV 배열이 없거나 범위 밖이면 기본값 반환

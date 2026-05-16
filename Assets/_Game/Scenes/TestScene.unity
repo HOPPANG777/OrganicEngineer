@@ -1051,6 +1051,7 @@ GameObject:
   - component: {fileID: 1234840333}
   - component: {fileID: 1234840334}
   - component: {fileID: 1234840335}
+  - component: {fileID: 1234840336}
   m_Layer: 0
   m_Name: SandboxRoot
   m_TagString: Untagged
@@ -1117,6 +1118,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e47670d65fe79b44be3bb2fb387ee64, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OrganicEngineer.MeshCutting.Sandbox.MeshCutPieceSpawn
+--- !u!114 &1234840336
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1234840331}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b3eed54ef3062e94dbf7e7d8dd09f45e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OrganicEngineer.MeshCutting.Sandbox.MeshCutPieceDragInput
+  _cameraRig: {fileID: 411510898}
+  _fallbackCamera: {fileID: 1604596442}
+  _raycastLayers:
+    serializedVersion: 2
+    m_Bits: 55
+  _maxRayDistance: 500
 --- !u!1 &1310651432
 GameObject:
   m_ObjectHideFlags: 0

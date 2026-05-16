@@ -17,6 +17,9 @@ namespace OrganicEngineer.MeshCutting
         // 단면 법선 판별에 사용하는 허용 오차
         private float _normalEpsilon = 1e-5f;
 
+        // 캡 UV 정규화에 사용하는 허용 오차
+        private float _uvEpsilon = 1e-5f;
+
         // 2D 볼록 껍질 계산기
         private MeshCutHull _meshCutHull = new MeshCutHull();
 
@@ -27,7 +30,7 @@ namespace OrganicEngineer.MeshCutting
         // 기능: MeshCutCap::Append
         // 설명: 절단 에지로 단면 루프를 만들고 Fan 삼각분할로 캡 삼각형을 추가한다.
         //==============================================================================
-        // TODO: 단면 UV 생성 규칙 추가
+        // TODO: 캡 UV 타일링/월드 스케일 옵션
         //
         //==============================================================================
         public void Append(MeshBuffer buffer, List<CutEdge> edges, Vector3 outwardNormal)
@@ -44,10 +47,13 @@ namespace OrganicEngineer.MeshCutting
             // 캡 정점 시작 인덱스 저장
             int baseIndex = buffer.verts.Count;
 
+            // 단면 평면 좌표를 0..1 범위 UV 로 변환
+            List<Vector2> capUVs = BuildCapUVs(loop3d, outwardNormal.normalized);
+
             // 단면 루프 정점을 버퍼에 추가
             for (int i = 0; i < loop3d.Count; i++)
             {
-                buffer.AddVertex(loop3d[i], Vector2.zero, outwardNormal.normalized);
+                buffer.AddVertex(loop3d[i], capUVs[i], outwardNormal.normalized);
             }
 
             // 첫 정점을 기준으로 Fan 삼각형 생성
@@ -131,6 +137,49 @@ namespace OrganicEngineer.MeshCutting
             }
 
             return points2d;
+        }
+
+        // 캡 루프 정점에 평면 투영 UV 를 생성
+        private List<Vector2> BuildCapUVs(List<Vector3> loop3d, Vector3 normal)
+        {
+            // 투영 축 생성
+            BuildProjectionAxes(normal, out Vector3 tangent, out Vector3 bitangent);
+
+            // 캡 첫 정점을 기준 원점으로 사용
+            List<Vector2> projected = ProjectTo2D(loop3d, loop3d[0], tangent, bitangent);
+
+            // 투영 좌표 범위 계산
+            CalculateUVBounds(projected, out Vector2 min, out Vector2 size);
+
+            // 정규화 결과 목록
+            List<Vector2> capUVs = new List<Vector2>(projected.Count);
+
+            // 캡 내부에서 0..1 범위가 되도록 정규화
+            for (int i = 0; i < projected.Count; i++)
+            {
+                float u = size.x > _uvEpsilon ? (projected[i].x - min.x) / size.x : 0.5f;
+                float v = size.y > _uvEpsilon ? (projected[i].y - min.y) / size.y : 0.5f;
+                capUVs.Add(new Vector2(u, v));
+            }
+
+            return capUVs;
+        }
+
+        // 투영 좌표의 최소점과 크기를 계산
+        private void CalculateUVBounds(List<Vector2> projected, out Vector2 min, out Vector2 size)
+        {
+            // 첫 좌표로 초기화
+            min = projected[0];
+            Vector2 max = projected[0];
+
+            // 전체 투영 좌표 범위 누적
+            for (int i = 1; i < projected.Count; i++)
+            {
+                min = Vector2.Min(min, projected[i]);
+                max = Vector2.Max(max, projected[i]);
+            }
+
+            size = max - min;
         }
 
         // hull 인덱스로 3D 껍질 점 목록 생성

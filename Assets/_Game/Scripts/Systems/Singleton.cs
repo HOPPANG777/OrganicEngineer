@@ -1,52 +1,56 @@
-using System;
 using UnityEngine;
 
 //==============================================================================
-// Singleton<T>: MonoBehaviour 싱글톤 베이스
-//==============================================================================
-// - 씬에서 기존 인스턴스 우선 탐색
-// - (옵션) 없으면 자동 생성
-// - (옵션) DontDestroyOnLoad 유지
-// - 종료 중 재생성 방지
+// 파일: Singleton.cs
+// 설명: 프로젝트 내 유니티 MonoBehaviour 기반 싱글톤 컴포넌트의 베이스 클래스
 //==============================================================================
 
 /// <summary>
-/// 동일한 컴포넌트를 하나의 GameObject에 여러 개 붙이는 것을 방지합니다.
-/// 싱글톤은 반드시 하나만 존재해야 하므로 중요한 안전장치입니다.
+/// MonoBehaviour 기반의 제네릭 싱글톤 베이스 클래스입니다.
 /// </summary>
+/// <remarks>
+/// ⚠️ [코딩 컨벤션 1.3] 프로젝트 전역 싱글톤은 오직 'GameRoot' 하나만 두는 것이 원칙입니다.
+/// 특정 컨트롤러(도메인 관리) 클래스들은 본 클래스를 상속받지 말고, GameRoot의 멤버 필드로 등록하여 사용하세요.
+/// </remarks>
+/// <typeparam name="T">MonoBehaviour를 상속받은 싱글톤 타입</typeparam>
 [DisallowMultipleComponent]
 public abstract class Singleton<T> : MonoBehaviour where T : MonoBehaviour
 {
-    //--------------------------------------------------------------------------
-    // [1] 내부 상태(static)
-    //--------------------------------------------------------------------------
+    //==============================================================================
+    // 내부 상태 (Static Fields)
+    //==============================================================================
 
-    /// <summary>싱글톤 인스턴스(static).</summary>
+    /// <summary>싱글톤 인스턴스의 static 참조 필드입니다.</summary>
     private static T _instance;
 
-    /// <summary>종료(quit) 중 여부.</summary>
+    /// <summary>애플리케이션이 종료(Quit) 중인지 여부를 나타내는 플래그입니다.</summary>
     private static bool _isQuitting;
 
-    /// <summary>씬 탐색을 1회만 수행하기 위한 플래그.</summary>
+    /// <summary>씬 내에서 기존 인스턴스 검색을 실행했는지 여부입니다.</summary>
     private static bool _searchedInScene;
 
-    /// <summary>자동 생성 허용 여부(타입별).</summary>
+    /// <summary>인스턴스가 없을 때 자동 생성(Create On Demand)을 허용할지 여부입니다.</summary>
     private static bool _autoCreateIfNotFound = true;
 
-    /// <summary>자동 생성 시 GameObject 이름(타입별).</summary>
+    /// <summary>자동 생성 시 씬에 배치될 GameObject의 이름입니다.</summary>
     private static string _autoCreatedObjectName = $"[Singleton] {typeof(T).Name}";
 
-    /// <summary>DontDestroyOnLoad 적용 여부(타입별).</summary>
+    /// <summary>씬이 변경되어도 파괴되지 않고 유지(DontDestroyOnLoad)할지 여부입니다.</summary>
     private static bool _persistAcrossScenes = true;
 
-    /// <summary>중복 생성 방지용 lock.</summary>
-    private static readonly object _lock = new object();
+    /// <summary>멀티스레드 및 레이스 컨디션 방지를 위한 동기화 lock 객체입니다.</summary>
+    private static readonly object _lockObject = new object();
 
-    //--------------------------------------------------------------------------
-    // [2] 타입별 설정 API (파생 클래스에서 static ctor로 1회 설정)
-    //--------------------------------------------------------------------------
+    //==============================================================================
+    // 타입별 정책 설정 API
+    //==============================================================================
 
-    /// <summary>타입별 싱글톤 정책 설정(보통 static ctor에서 1회 호출).</summary>
+    /// <summary>
+    /// 파생 클래스의 static 생성자에서 싱글톤의 세부 작동 정책을 설정합니다.
+    /// </summary>
+    /// <param name="allowAutoCreate">인스턴스가 없을 때 자동 생성 여부</param>
+    /// <param name="autoCreatedObjectName">자동 생성 시 런타임 씬 오브젝트 이름</param>
+    /// <param name="persistAcrossScenes">DontDestroyOnLoad 적용 여부</param>
     protected static void ConfigureSingleton(
         bool allowAutoCreate,
         string autoCreatedObjectName = null,
@@ -56,59 +60,68 @@ public abstract class Singleton<T> : MonoBehaviour where T : MonoBehaviour
         _persistAcrossScenes = persistAcrossScenes;
 
         if (!string.IsNullOrWhiteSpace(autoCreatedObjectName))
+        {
             _autoCreatedObjectName = autoCreatedObjectName;
+        }
     }
 
-    //--------------------------------------------------------------------------
-    // [3] 외부 API
-    //--------------------------------------------------------------------------
+    //==============================================================================
+    // 외부 접근 API (Properties & Methods)
+    //==============================================================================
 
-    /// <summary>인스턴스 접근자(정책에 따라 씬 탐색/자동 생성).</summary>
+    /// <summary>
+    /// 싱글톤 고유 인스턴스에 접근하는 프로퍼티입니다. (캡슐화 및 정책 적용)
+    /// </summary>
     public static T Instance
     {
         get
         {
-            // 종료 중에는 새로 만들지 않습니다.
+            // 종료 프로세스 진행 중에는 메모리 릭 및 유령 오브젝트 생성을 방지하기 위해 생성을 무시합니다.
             if (_isQuitting)
             {
-                Log($"Instance 요청 무시(종료 중): {typeof(T).Name}");
+                Log($"Instance 요청 무시 (애플리케이션 종료 중): {typeof(T).Name}");
                 return null;
             }
-            // 빠른 경로: 이미 있으면 즉시 반환
+
             if (_instance != null)
-                return _instance;
-            lock (_lock)
             {
-                // 락 이후 다시 확인
+                return _instance;
+            }
+
+            lock (_lockObject)
+            {
                 if (_instance != null)
+                {
                     return _instance;
-                // 1) 씬에서 기존 인스턴스를 딱 한 번 찾아봅니다.
+                }
+
+                // 1) 씬에 이미 배치되어 있는 기존 컴포넌트를 최초 1회 탐색합니다.
                 if (!_searchedInScene)
                 {
                     _searchedInScene = true;
-                    // Unity 2023+에서는 FindFirstObjectByType이 권장됩니다.
-                    // 구버전 호환이 필요하면 FindObjectOfType을 사용할 수 있습니다.
+
 #if UNITY_2023_1_OR_NEWER
                     _instance = UnityEngine.Object.FindFirstObjectByType<T>();
 #else
                     _instance = UnityEngine.Object.FindObjectOfType<T>();
 #endif
+
                     if (_instance != null)
                     {
                         Log($"씬에서 기존 인스턴스 발견: {GetHierarchyPath(_instance.gameObject)}");
-                        // 타입 설정상 DontDestroyOnLoad가 필요한 경우 보장합니다.
-                        // (씬 배치 인스턴스를 사용했는데 DontDestroyOnLoad가 안 걸려있는 경우 대비)
+
                         if (_persistAcrossScenes)
+                        {
                             DontDestroyOnLoad(_instance.gameObject);
+                        }
                         return _instance;
                     }
                 }
 
-                // 2) 씬에도 없으면 자동 생성 여부 확인
-                // - allowAutoCreate=false인 타입은 여기서 null을 반환하여 “프리팹/씬 배치 강제”를 실현합니다.
+                // 2) 씬에 존재하지 않을 경우, 타입별 정책에 따라 자동 생성 여부를 결정합니다.
                 if (!_autoCreateIfNotFound)
                 {
-                    LogWarning($"Instance 요청 실패(자동 생성 금지): {typeof(T).Name} - 씬/프리팹에 배치되어 있어야 합니다.");
+                    LogWarning($"Instance 요청 실패 (자동 생성 제한 타입): {typeof(T).Name} - 프리팹 또는 씬에 미리 배치되어야 합니다.");
                     return null;
                 }
 
@@ -118,15 +131,21 @@ public abstract class Singleton<T> : MonoBehaviour where T : MonoBehaviour
     }
 
     /// <summary>
-    /// 인스턴스가 이미 존재하는지 여부만 확인합니다(생성/탐색 없음).
-    /// - 로직 분기(있으면 사용, 없으면 다른 처리)에 유용합니다.
+    /// 현재 싱글톤 인스턴스가 런타임 상에 메모리 할당 및 유효하게 존재하는지 여부만 빠르게 확인합니다.
     /// </summary>
-    public static bool HasInstance => _instance != null && !_isQuitting;
+    public static bool HasInstance
+    {
+        get
+        {
+            return _instance != null && !_isQuitting;
+        }
+    }
 
     /// <summary>
-    /// "가능하면 가져오고, 없으면 false"를 반환하는 안전한 접근 메서드입니다.
-    /// - 자동 생성이 싫은 코드 경로에서 특히 유용합니다.
+    /// 인스턴스를 안전하게 가져오려고 시도하며, 자동 생성을 유발하지 않고 유효성 여부를 반환합니다.
     /// </summary>
+    /// <param name="value">출력될 싱글톤 인스턴스 참조</param>
+    /// <returns>인스턴스 존재 여부 (True / False)</returns>
     public static bool TryGetInstance(out T value)
     {
         if (_isQuitting)
@@ -134,12 +153,17 @@ public abstract class Singleton<T> : MonoBehaviour where T : MonoBehaviour
             value = null;
             return false;
         }
+
         value = _instance;
-        if (value != null) return true;
-        // 씬 탐색 1회는 허용
+        if (value != null)
+        {
+            return true;
+        }
+
         if (!_searchedInScene)
         {
             _searchedInScene = true;
+
 #if UNITY_2023_1_OR_NEWER
             value = UnityEngine.Object.FindFirstObjectByType<T>();
 #else
@@ -147,43 +171,46 @@ public abstract class Singleton<T> : MonoBehaviour where T : MonoBehaviour
 #endif
             _instance = value;
         }
+
         return value != null;
     }
-    //--------------------------------------------------------------------------
-    // [4] Unity 생명주기
-    //--------------------------------------------------------------------------
+
+    //==============================================================================
+    // 유니티 생명주기 (Unity Lifecycle)
+    //==============================================================================
+
     /// <summary>
-    /// Awake에서 싱글톤 등록/중복 제거를 수행합니다.
-    /// - _instance가 비어있으면: 자신을 등록하고 필요 시 DontDestroyOnLoad
-    /// - 이미 다른 인스턴스가 있으면: 자신은 중복이므로 파괴
+    /// 객체 생성 시 싱글톤 유일성을 검증하고 등록 및 중복 제거를 처리합니다.
     /// </summary>
     protected virtual void Awake()
     {
         if (_isQuitting)
         {
-            // 종료 중에 생성된 오브젝트면 즉시 정리
             Destroy(gameObject);
             return;
         }
+
         if (_instance == null)
         {
             _instance = this as T;
-            _searchedInScene = true; // 이미 찾았으니 씬 탐색은 불필요
+            _searchedInScene = true;
+
             if (_persistAcrossScenes)
+            {
                 DontDestroyOnLoad(gameObject);
+            }
+
             Log($"싱글톤 등록 완료: {GetHierarchyPath(gameObject)}");
         }
         else if (_instance != this)
         {
-            // 중복 인스턴스 처리: 개발 단계에서 원인 파악이 중요하므로 로그를 남깁니다.
-            LogWarning($"중복 싱글톤 감지 -> 파괴: {GetHierarchyPath(gameObject)} / 기존: {GetHierarchyPath(_instance.gameObject)}");
+            LogWarning($"중복 싱글톤 감지 및 예외 파괴 완료: {GetHierarchyPath(gameObject)} / 원본 인스턴스: {GetHierarchyPath(_instance.gameObject)}");
             Destroy(gameObject);
         }
     }
 
     /// <summary>
-    /// 애플리케이션 종료 시 호출됩니다.
-    /// 여기서 플래그를 세팅해두면, 종료 과정에서 Instance가 호출돼도 재생성되지 않습니다.
+    /// 유니티 애플리케이션 종료 시점에 런타임 유령 오브젝트가 생성되는 부작용을 방지합니다.
     /// </summary>
     protected virtual void OnApplicationQuit()
     {
@@ -191,60 +218,62 @@ public abstract class Singleton<T> : MonoBehaviour where T : MonoBehaviour
     }
 
     /// <summary>
-    /// 오브젝트가 파괴될 때 호출됩니다.
-    /// - 본인이 _instance인 경우에만 static 참조를 정리합니다.
-    /// - null 체크 후 로그를 남겨 NRE를 방지합니다.
+    /// 객체 파괴 시 싱글톤 인스턴스의 static 참조를 초기화하여 메모리를 해제합니다.
     /// </summary>
     protected virtual void OnDestroy()
     {
         if (_instance == this)
         {
-            Log($"싱글톤 해제(파괴): {GetHierarchyPath(gameObject)}");
+            Log($"싱글톤 참조 해제(파괴): {GetHierarchyPath(gameObject)}");
             _instance = null;
-            // _searchedInScene는 유지: 파괴 후 다시 필요해질 수 있으니 재탐색 허용 여부는 정책에 따라 다릅니다.
-            // 여기서는 다음 Instance 호출에서 다시 생성/탐색을 허용하는 쪽으로 둡니다.
         }
     }
 
-    //--------------------------------------------------------------------------
-    // [5] 내부 유틸
-    //--------------------------------------------------------------------------
+    //==============================================================================
+    // 내부 유틸리티 로직 (Private Utilities)
+    //==============================================================================
+
     /// <summary>
-    /// 씬에 없을 때 자동으로 인스턴스를 생성합니다.
-    /// - GameObject 생성
-    /// - T 컴포넌트 추가
-    /// - 이름 지정
-    /// - 필요 시 DontDestroyOnLoad는 Awake에서 처리
+    /// 씬 내에 인스턴스가 없을 때 런타임 상에서 동적으로 고유 게임오브젝트와 컴포넌트를 생성합니다.
     /// </summary>
+    /// <returns>생성된 싱글톤 컴포넌트 인스턴스</returns>
     private static T CreateAutoInstance()
     {
-        var go = new GameObject(_autoCreatedObjectName);
-        var created = go.AddComponent<T>();
-        // 생성 직후 Awake에서 _instance 등록 + DontDestroyOnLoad 처리됩니다.
-        Log($"자동 생성 완료: {GetHierarchyPath(go)}");
-        return created;
+        GameObject autoGameObject = new GameObject(_autoCreatedObjectName);
+        T createdComponent = autoGameObject.AddComponent<T>();
+
+        Log($"런타임 동적 자동 생성 완료: {GetHierarchyPath(autoGameObject)}");
+        return createdComponent;
     }
 
     /// <summary>
-    /// Hierarchy에서 오브젝트의 경로를 만들어 디버깅 가독성을 높입니다.
+    /// 디버깅 가독성을 향상시키기 위해 해당 게임오브젝트의 하이러키 전체 경로 문자열을 빌드합니다.
     /// </summary>
+    /// <param name="go">조회할 게임오브젝트</param>
+    /// <returns>하이라키 부모-자식 경로 구조 문자열</returns>
     private static string GetHierarchyPath(GameObject go)
     {
-        if (go == null) return "(null)";
-        var t = go.transform;
-        string path = t.name;
-        while (t.parent != null)
+        if (go == null)
         {
-            t = t.parent;
-            path = $"{t.name}/{path}";
+            return "(null)";
         }
-        return path;
+
+        Transform currentTransform = go.transform;
+        string hierarchyPath = currentTransform.name;
+
+        while (currentTransform.parent != null)
+        {
+            currentTransform = currentTransform.parent;
+            hierarchyPath = $"{currentTransform.name}/{hierarchyPath}";
+        }
+
+        return hierarchyPath;
     }
 
     /// <summary>
-    /// 로그 출력. 에디터 또는 개발 빌드에서만.
-    /// 릴리즈 빌드에서는 불필요한 로그로 성능/보안 이슈가 생길 수 있어 제한합니다.
+    /// 에디터 혹은 개발 빌드 환경에서만 조건부로 출력되는 싱글톤 내부 전용 안전 로그 함수입니다.
     /// </summary>
+    /// <param name="message">출력할 로그 내용</param>
     [System.Diagnostics.Conditional("UNITY_EDITOR")]
     [System.Diagnostics.Conditional("DEVELOPMENT_BUILD")]
     private static void Log(string message)
@@ -253,8 +282,9 @@ public abstract class Singleton<T> : MonoBehaviour where T : MonoBehaviour
     }
 
     /// <summary>
-    /// 경고 로그. 에디터 또는 개발 빌드에서만.
+    /// 에디터 혹은 개발 빌드 환경에서만 조건부로 출력되는 싱글톤 내부 전용 예외 경고 로그 함수입니다.
     /// </summary>
+    /// <param name="message">출력할 경고 내용</param>
     [System.Diagnostics.Conditional("UNITY_EDITOR")]
     [System.Diagnostics.Conditional("DEVELOPMENT_BUILD")]
     private static void LogWarning(string message)

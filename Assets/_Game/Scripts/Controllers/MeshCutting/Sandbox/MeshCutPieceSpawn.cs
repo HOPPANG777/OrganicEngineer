@@ -33,6 +33,9 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         //==============================================================================
         public void Spawn(MeshFilter target, Mesh mesh, string suffix, Material pieceMaterial, Material capMaterial)
         {
+            // 파츠 이동 입력이 씬에 없으면 같은 오브젝트에 자동 구성한다.
+            EnsurePieceDragInput();
+
             // 가드: Mesh 없음
             if (mesh == null)
             {
@@ -93,6 +96,15 @@ namespace OrganicEngineer.MeshCutting.Sandbox
                 Mathf.Max(meshBounds.size.z * 2, minExtent)
             );
 
+            // 드래그 이동과 충돌 시스템 호환을 위한 kinematic Rigidbody 구성
+            Rigidbody pieceBody = pieceGo.AddComponent<Rigidbody>();
+            pieceBody.isKinematic = true;
+            pieceBody.useGravity = false;
+
+            // 잘린 조각 이동 대상 컴포넌트 구성
+            MeshCutPiece cutPiece = pieceGo.AddComponent<MeshCutPiece>();
+            cutPiece.Construct(pieceBody);
+
             // Reset 때 파괴할 수 있도록 목록에 저장
             _spawned.Add(pieceGo);
         }
@@ -152,6 +164,19 @@ namespace OrganicEngineer.MeshCutting.Sandbox
 
             // 목록 초기화
             _spawned.Clear();
+        }
+
+        //==============================================================================
+        // 기능: MeshCutPieceSpawn::EnsurePieceDragInput
+        // 설명: 잘린 파츠 우클릭 이동 입력 컴포넌트가 없으면 자동으로 추가한다.
+        //==============================================================================
+        private void EnsurePieceDragInput()
+        {
+            // 이미 같은 오브젝트에 입력 컴포넌트가 있으면 추가하지 않는다.
+            if (GetComponent<MeshCutPieceDragInput>() != null) return;
+
+            // 런타임 샌드박스 테스트 편의를 위해 조각 생성 시 자동 구성한다.
+            gameObject.AddComponent<MeshCutPieceDragInput>();
         }
     }
 }
