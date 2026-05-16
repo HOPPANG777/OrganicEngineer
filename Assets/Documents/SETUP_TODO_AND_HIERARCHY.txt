@@ -102,49 +102,37 @@ OrganicEngineer - 구축 ToDo / 주간 구현 순서 / 하이어라키
 
 [E] 메쉬 절개 프로토 트랙 (3D 절개 채택 검증용)
   · 결정: 3D + URP + 다중 평면 근사 + 직접 구현(scratch)
-  · 위치: Assets/02_Scripts/006_MeshCutting/  +  Assets/00_Scenes/Sandbox_MeshCut.unity (신규)
-  · 코어가 본 게임 핵심 시스템이 될 가능성이 크므로 999_TestScripts가 아닌 정식 폴더로 둠.
+  · 위치: Assets/_Game/Scripts/Controllers/MeshCutting/  +  Sandbox 씬(프로젝트 내 배치)
+  · 세션 핸드오프(짧게): Assets/Documents/MESH_CUT_SESSION.md §0 만. 긴 로드맵 문서는 사용 안 함.
 
   E-Step 0. 샌드박스 씬 + 폴더 구조
-  - [V] 폴더: 006_MeshCutting/Core, /Sandbox  (Capping/Input은 다음 단계 추가)
-  - [V] 핵심 스크립트 골격(MeshCutter / CutResult / MeshCutSandboxController)
-  - [ ] Sandbox_MeshCut.unity 생성 + Target/Cutter/SandboxRoot 배치
-  - [ ] SandboxRoot에 MeshCutSandboxController 부착, Target/Cutter 참조 연결
+  - [V] Core / Sandbox / Camera 폴더 + 핵심 스크립트
+  - [~] Sandbox 씬·Target/Cutter/Rig 참조 (프로젝트별로 확인)
 
-  E-Step 1. 평면 1장 절단 (캡핑 X)
-  - [V] MeshCutter.Cut(MeshFilter, Plane) — 삼각형 분류/분할 + 두 메쉬 출력
-  - [V] Cutter.up을 평면 법선으로 사용 (인스펙터 회전으로 각도 조절)
-  - [V] Inspector Cut/Reset 버튼 (Odin)
-  - [ ] 큐브로 동작 확인 — 자른 단면이 뚫려 보이면 정상(의도)
+  E-Step 1. 평면 1장 절단
+  - [V] MeshCutter.Cut + Cut/Reset(Odin) + 스폰 조각
 
   E-Step 2. 단면 캡핑 + 두 SubMesh 분리
-  - [ ] 절단 평면이 만든 교차 에지 수집
-  - [ ] 에지 → 폐곡선(Loop) 정렬 (다중 루프 가능: 도넛/장기 대응)
-  - [ ] 다각형 삼각화: ear-clipping 1차, 추후 Constrained Delaunay 검토
-  - [ ] SubMesh: [0]=외피, [1]=단면. MeshRenderer.sharedMaterials = [외피Mat, 단면Mat]
-  - [ ] 양면 처리: 위/아래 두 단면을 winding 반대로 각각 추가
+  - [V] 교차 에지 → 볼록 hull + fan, SubMesh 0/1, Above/Below 캡 법선
+  - [ ] 오목 단면 ear-clipping / 다중 루프
 
   E-Step 3. 단면 머티리얼 v1 (URP Shader Graph)
-  - [ ] tangent space UV 생성 (절단 평면 tangent/bitangent → 정점 2D 투영 → AABB 정규화)
-  - [ ] M_CrossSection.mat: BaseColor + 노이즈로 단순한 근육 톤 1차
-  - [ ] Render Face = Both 또는 양면 폴리곤으로 단면 양쪽 가시성 확보
-  - [ ] 외피 머티리얼은 그대로 유지
+  - [ ] 캡 UV (MeshCutCap — 현재 0,0)
+  - [ ] M_CrossSection 등 단면 머티리얼 톤
 
-  E-Step 4. 콜라이더/Rigidbody 정합
-  - [ ] MeshCollider.sharedMesh 갱신 (단면 캡핑 후 convex 옵션 가능 여부 점검)
-  - [ ] Rigidbody.ResetCenterOfMass + 질량 분배 정책
-  - [ ] 두 조각 각각 별도 Rigidbody/MeshCollider 정상 동작
-  - [B] 부위 ID 매핑(원본의 어느 부위에서 떨어진 조각인가) — [B] 부위 ID 매핑 항목과 동기화
+  E-Step 4. 콜라이더 정합
+  - [V] 조각 BoxCollider(bounds) — 레이·연속 컷용
+  - [ ] Rigidbody·질량 / MeshCollider 정밀 히트(선택)
+  - [B] 부위 ID 매핑
 
-  E-Step 5. 마우스 드래그 → 임의 평면 절단
-  - [ ] InputAction(MouseLeft + MousePosition) 액션 맵 임시 정의 ([B] Input 액션 맵에 합류)
-  - [ ] 드래그 시작점 + 끝점 + 카메라 forward → 절단 평면 1장 계산
-  - [ ] 카메라 시선과 평행한 평면을 기본으로 (직관적인 "긋는 방향")
+  E-Step 5. 마우스 드래그 → 평면 절단
+  - [V] MeshCutSandboxDragInput + 규칙 C + CutCameraRig(탑 시작, Q/E/R)
+  - [V] 연속 재컷(동일 MeshFilter Down/Up)
+  - [ ] InputAction 자산으로 통합([B] 전역 Input 맵)
 
   E-Step 6. 정점 머지 / 반복 절단 안정화
-  - [ ] epsilon 기반 정점 dedup (Step 1의 무지성 추가에서 진화)
-  - [ ] 같은 조각을 N회 반복 절단해도 메쉬 깨지지 않을 것
-  - [ ] 부동소수 누적 오차 처리(평면 위/아래 0 부근 처리 정책 명시)
+  - [~] 연속 컷 동작(샌드박스); ResetAll만, 마지막 컷 취소 없음
+  - [ ] 부동소수·퇴화 삼각형 강화
 
   E-Step 7. 다중 평면 근사 (자유 곡선 절단의 본체)
   - [ ] 드래그 폴리라인 → 카메라 평면을 따라 N개 짧은 직선으로 분할
@@ -184,10 +172,9 @@ Week 3: Localization + SceneFlow 강화 + Save 골격
   → 게임 시스템이 결정되면 즉시 끼워넣을 수 있는 상태가 됨
 
 병렬 트랙: 메쉬 절개 프로토 ([E])
-- [V] E-Step 0 + 1 (샌드박스 씬 골격 + 평면 1장 절단)
-- [ ] E-Step 2 단면 캡핑 → Step 3 단면 머티리얼 v1 까지가 1차 검증 게이트
-- 게이트 통과 후에만 Step 5~7(드래그 → 다중 평면 근사) 진행
-- 실패 시: voxel/SDF 또는 2D 회귀 결정
+- [V] E-Step 0~1, 2(볼록 캡), 5(드래그·카메라·연속 컷)
+- [ ] E-Step 3 캡 UV·단면 머티리얼 → 1차 검증 게이트
+- [ ] E-Step 7 다중 평면·떨림 (게이트 후)
 
 이후 (시스템 기획 확정 후):
 - 카메라 프리셋 → Input 액션 맵 → 부위 시스템 → 진행도/전투 로그 저장
@@ -287,10 +274,11 @@ Sandbox_MeshCut
 │   · position = 평면 위 한 점, up(Y) = 평면 법선
 │   · 회전/이동으로 절단 평면 각도 조정
 └─ SandboxRoot (Empty)                            [E-Step 0]
-    · MeshCutSandboxController                   [V] (Inspector Cut/Reset 버튼)
-       - Target  ← Target의 MeshFilter
-       - Cutter  ← Cutter의 Transform
-       - PieceMaterial  ← 비워두면 원본 머티리얼 재사용
+    · MeshCutSandboxController                   [V] Cut/Reset + 연속 컷
+    · MeshCutSandboxDragInput                    [V] 드래그 컷
+    · MeshCutPieceSpawn                          [V] 조각 스폰 + BoxCollider
+    · CutCameraRig + SwitchInput / Top           [V] Q/E/R, 탑 시작
+       - Target / Cutter / Materials (인스펙터 연결)
 
 
 ============================================================

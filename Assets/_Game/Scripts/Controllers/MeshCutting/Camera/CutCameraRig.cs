@@ -23,7 +23,11 @@ namespace OrganicEngineer.MeshCutting.CutCamera
         [SerializeField] private Camera[] _sideCamera;
 
         [TabGroup("Camera")]
-        [Tooltip("시작 시 활성화 할 측면 인덱스")]
+        [Tooltip("시작 시 화면 모드. TOP_ONLY = 탑뷰만, TOP_PLUS_SIDE = 탑+측면 1대")]
+        [SerializeField] private CutCameraMode _initialMode = CutCameraMode.TOP_ONLY;
+
+        [TabGroup("Camera")]
+        [Tooltip("TOP_PLUS_SIDE 로 시작할 때 활성화할 측면 인덱스(Q/E 전환 시에도 사용)")]
         [SerializeField] private int _initialSideIndex;
 
         //-------------------- 내부 변수 --------------------//
@@ -35,7 +39,7 @@ namespace OrganicEngineer.MeshCutting.CutCamera
         private CutCameraIndex _cutCameraIndex = new CutCameraIndex();
 
         private int _activeSideIndex;                               // 현재 활성화 되어 있는 측면 카메라
-        private CutCameraMode _mode = CutCameraMode.TOP_PLUS_SIDE;  // 현재 모드
+        private CutCameraMode _mode = CutCameraMode.TOP_ONLY;       // 현재 모드
 
         //-------------------- Get 함수 --------------------//
 
@@ -134,6 +138,7 @@ namespace OrganicEngineer.MeshCutting.CutCamera
                 return;
             }
             _activeSideIndex = Mathf.Clamp(_initialSideIndex, 0, _sideCamera.Length - 1);
+            _mode = _initialMode;
         }
 
         private void Start()

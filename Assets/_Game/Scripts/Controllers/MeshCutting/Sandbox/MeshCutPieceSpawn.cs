@@ -86,10 +86,12 @@ namespace OrganicEngineer.MeshCutting.Sandbox
             const float minExtent = 1e-4f;
             BoxCollider boxCollider = pieceGo.AddComponent<BoxCollider>();
             boxCollider.center = meshBounds.center;
-            boxCollider.size = new Vector3(
-                Mathf.Max(meshBounds.size.x, minExtent),
-                Mathf.Max(meshBounds.size.y, minExtent),
-                Mathf.Max(meshBounds.size.z, minExtent));
+            boxCollider.size = new Vector3
+            (
+                Mathf.Max(meshBounds.size.x * 2, minExtent),
+                Mathf.Max(meshBounds.size.y * 2, minExtent),
+                Mathf.Max(meshBounds.size.z * 2, minExtent)
+            );
 
             // Reset 때 파괴할 수 있도록 목록에 저장
             _spawned.Add(pieceGo);
