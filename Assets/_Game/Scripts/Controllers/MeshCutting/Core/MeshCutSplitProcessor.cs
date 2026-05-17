@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace OrganicEngineer.MeshCutting
@@ -14,7 +15,21 @@ namespace OrganicEngineer.MeshCutting
         //-------------------- 맴버 변수 --------------------//
 
         // 모서리와 평면의 교차점 보간 계산기
-        private MeshCutEdge _meshCutEdge = new MeshCutEdge();
+        private readonly MeshCutEdge _meshCutEdge;
+
+        //-------------------- 생성 함수 --------------------//
+
+        //==============================================================================
+        // 기능: MeshCutSplitProcessor::MeshCutSplitProcessor
+        // 설명: 정점 채널 조회에 사용할 모서리 보간 계산기를 주입받는다.
+        //==============================================================================
+        // TODO:
+        //
+        //==============================================================================
+        public MeshCutSplitProcessor(MeshCutEdge meshCutEdge)
+        {
+            _meshCutEdge = meshCutEdge;
+        }
 
         //-------------------- 기능 함수 --------------------//
 
@@ -76,9 +91,9 @@ namespace OrganicEngineer.MeshCutting
         public void AddLoneTriangle
         (
             MeshBuffer buffer,
-            Vector3[] srcVec,
-            Vector2[] srcUV,
-            Vector3[] srcNormal,
+            List<Vector3> srcVec,
+            List<Vector2> srcUV,
+            List<Vector3> srcNormal,
             int l,
             Vector3 pPos,
             Vector2 pUV,
@@ -86,6 +101,7 @@ namespace OrganicEngineer.MeshCutting
             Vector3 qPos,
             Vector2 qUV,
             Vector3 qNormal,
+            int sourceSubMeshIndex,
             bool isCap
         )
         {
@@ -99,16 +115,16 @@ namespace OrganicEngineer.MeshCutting
             int lq = buffer.AddVertex(qPos, qUV, qNormal);
 
             // Lone 쪽 삼각형 등록
-            buffer.AddTriangle(li, lp, lq, isCap);
+            buffer.AddTriangle(li, lp, lq, sourceSubMeshIndex, isCap);
         }
 
         // 반대쪽 사다리꼴을 두 삼각형으로 추가
         public void AddOtherQuad
         (
             MeshBuffer buffer,
-            Vector3[] srcVec,
-            Vector2[] srcUV,
-            Vector3[] srcNormal,
+            List<Vector3> srcVec,
+            List<Vector2> srcUV,
+            List<Vector3> srcNormal,
             int m,
             int n,
             Vector3 pPos,
@@ -117,6 +133,7 @@ namespace OrganicEngineer.MeshCutting
             Vector3 qPos,
             Vector2 qUV,
             Vector3 qNormal,
+            int sourceSubMeshIndex,
             bool isCap
         )
         {
@@ -133,10 +150,10 @@ namespace OrganicEngineer.MeshCutting
             int oq = buffer.AddVertex(qPos, qUV, qNormal);
 
             // 사다리꼴 앞쪽 삼각형 등록
-            buffer.AddTriangle(op, om, on, isCap);
+            buffer.AddTriangle(op, om, on, sourceSubMeshIndex, isCap);
 
             // 사다리꼴 뒤쪽 삼각형 등록
-            buffer.AddTriangle(op, on, oq, isCap);
+            buffer.AddTriangle(op, on, oq, sourceSubMeshIndex, isCap);
         }
     }
 

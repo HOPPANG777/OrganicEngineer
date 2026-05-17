@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace OrganicEngineer.MeshCutting
@@ -14,10 +15,25 @@ namespace OrganicEngineer.MeshCutting
         //-------------------- 맴버 변수 --------------------//
 
         // MeshCutSplit의 내부 함수를 옮겨놓은 클래스
-        private MeshCutSplitProcessor _meshCutSplitProcessor = new MeshCutSplitProcessor();
+        private readonly MeshCutSplitProcessor _meshCutSplitProcessor;
 
         // 모서리와 평면의 교차점 보간 계산기
-        private MeshCutEdge _meshCutEdge = new MeshCutEdge();
+        private readonly MeshCutEdge _meshCutEdge;
+
+        //-------------------- 생성 함수 --------------------//
+
+        //==============================================================================
+        // 기능: MeshCutSplit::MeshCutSplit
+        // 설명: 분할 보조 처리기와 모서리 보간 계산기를 외부에서 주입받는다.
+        //==============================================================================
+        // TODO:
+        //
+        //==============================================================================
+        public MeshCutSplit(MeshCutSplitProcessor meshCutSplitProcessor, MeshCutEdge meshCutEdge)
+        {
+            _meshCutSplitProcessor = meshCutSplitProcessor;
+            _meshCutEdge = meshCutEdge;
+        }
 
         //-------------------- 기능 함수 --------------------//
 
@@ -33,17 +49,18 @@ namespace OrganicEngineer.MeshCutting
             MeshBuffer above,
             MeshBuffer below,
             Plane plane,
-            Vector3[] srcVec,
-            Vector2[] srcUV,
-            Vector3[] srcNormal,
+            List<Vector3> srcVec,
+            List<Vector2> srcUV,
+            List<Vector3> srcNormal,
             int i0,
             int i1,
             int i2,
             bool s0,
             bool s1,
             bool s2,
-            bool[] side,
+            List<bool> side,
             CutResult cutResult,
+            int sourceSubMeshIndex,
             bool isCap
         )
         {
@@ -71,10 +88,10 @@ namespace OrganicEngineer.MeshCutting
             MeshBuffer otherBuffer = loneSide ? below : above;
 
             // Lone 쪽 작은 삼각형 추가
-            _meshCutSplitProcessor.AddLoneTriangle(loneBuffer, srcVec, srcUV, srcNormal, l, pPos, pUV, pNormal, qPos, qUV, qNormal, isCap);
+            _meshCutSplitProcessor.AddLoneTriangle(loneBuffer, srcVec, srcUV, srcNormal, l, pPos, pUV, pNormal, qPos, qUV, qNormal, sourceSubMeshIndex, isCap);
 
             // 반대쪽 사다리꼴을 두 삼각형으로 추가
-            _meshCutSplitProcessor.AddOtherQuad(otherBuffer, srcVec, srcUV, srcNormal, m, n, pPos, pUV, pNormal, qPos, qUV, qNormal, isCap);
+            _meshCutSplitProcessor.AddOtherQuad(otherBuffer, srcVec, srcUV, srcNormal, m, n, pPos, pUV, pNormal, qPos, qUV, qNormal, sourceSubMeshIndex, isCap);
         }
 
 

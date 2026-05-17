@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace OrganicEngineer.MeshCutting
@@ -21,12 +22,13 @@ namespace OrganicEngineer.MeshCutting
         public void Copy
         (
             MeshBuffer buffer,
-            Vector3[] srcVec,
-            Vector2[] srcUV,
-            Vector3[] srcNormal,
+            List<Vector3> srcVec,
+            List<Vector2> srcUV,
+            List<Vector3> srcNormal,
             int i0,
             int i1,
             int i2,
+            int sourceSubMeshIndex,
             bool isCap
         )
         {
@@ -36,13 +38,13 @@ namespace OrganicEngineer.MeshCutting
             int c = buffer.AddVertex(srcVec[i2], GetUV(srcUV, i2), GetNormal(srcNormal, i2));
 
             // 원본과 같은 순서로 삼각형 추가
-            buffer.AddTriangle(a, b, c, isCap);
+            buffer.AddTriangle(a, b, c, sourceSubMeshIndex, isCap);
         }
 
         // UV 배열이 없거나 범위 밖이면 기본값 반환
-        private Vector2 GetUV(Vector2[] uvs, int i)
+        private Vector2 GetUV(List<Vector2> uvs, int i)
         {
-            if (uvs == null || i < 0 || i >= uvs.Length)
+            if (uvs == null || i < 0 || i >= uvs.Count)
             {
                 return Vector2.zero;
             }
@@ -51,9 +53,9 @@ namespace OrganicEngineer.MeshCutting
         }
 
         // 노멀 배열이 없거나 범위 밖이면 기본값 반환
-        private Vector3 GetNormal(Vector3[] normals, int i)
+        private Vector3 GetNormal(List<Vector3> normals, int i)
         {
-            if (normals == null || i < 0 || i >= normals.Length)
+            if (normals == null || i < 0 || i >= normals.Count)
             {
                 return Vector3.up;
             }

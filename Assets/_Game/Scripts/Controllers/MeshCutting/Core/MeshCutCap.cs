@@ -15,16 +15,31 @@ namespace OrganicEngineer.MeshCutting
         //-------------------- 맴버 변수 --------------------//
 
         // 단면 법선 판별에 사용하는 허용 오차
-        private float _normalEpsilon = 1e-5f;
+        private const float _normalEpsilon = 1e-5f; 
 
         // 캡 UV 정규화에 사용하는 허용 오차
-        private float _uvEpsilon = 1e-5f;
+        private const float _uvEpsilon = 1e-5f;
 
         // 2D 볼록 껍질 계산기
-        private MeshCutHull _meshCutHull = new MeshCutHull();
+        private readonly MeshCutHull _meshCutHull;
 
         // 절단점 웰드 기능
-        private MeshCutWeld _meshCutWeld = new MeshCutWeld();
+        private readonly MeshCutWeld _meshCutWeld;
+
+        //-------------------- 생성 함수 --------------------//
+
+        //==============================================================================
+        // 기능: MeshCutCap::MeshCutCap
+        // 설명: 캡 루프 생성을 위한 볼록 껍질 계산기와 웰드 기능을 주입받는다.
+        //==============================================================================
+        // TODO:
+        //
+        //==============================================================================
+        public MeshCutCap(MeshCutHull meshCutHull, MeshCutWeld meshCutWeld)
+        {
+            _meshCutHull = meshCutHull;
+            _meshCutWeld = meshCutWeld;
+        }
 
         //==============================================================================
         // 기능: MeshCutCap::Append

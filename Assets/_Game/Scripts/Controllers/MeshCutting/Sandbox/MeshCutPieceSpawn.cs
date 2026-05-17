@@ -28,7 +28,7 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         // 기능: MeshCutPieceSpawn::Spawn
         // 설명: 원본 MeshFilter 의 TRS 를 복사한 조각 GameObject 를 만들고 Mesh/Material 을 설정한다.
         //==============================================================================
-        // TODO: 원본 Renderer 의 머티리얼 배열 전체 복사 정책
+        // TODO: 렌더러별 추가 머티리얼 슬롯 정책
         //
         //==============================================================================
         public void Spawn(MeshFilter target, Mesh mesh, string suffix, Material pieceMaterial, Material capMaterial)
@@ -73,16 +73,9 @@ namespace OrganicEngineer.MeshCutting.Sandbox
             MeshFilter pieceFilter = pieceGo.AddComponent<MeshFilter>();
             pieceFilter.sharedMesh = mesh;
 
-            // MeshRenderer 를 만들고 외피/단면 머티리얼 적용
+            // MeshRenderer 를 만들고 원본 외피 머티리얼과 마지막 단면 머티리얼을 적용
             MeshRenderer pieceRenderer = pieceGo.AddComponent<MeshRenderer>();
-            Material shellMat = pieceMaterial != null ? pieceMaterial : sourceRenderer.sharedMaterial;
-            Material capMat = capMaterial != null ? capMaterial : shellMat;
-
-            // 서브메시가 2개 이상이면 단면 머티리얼까지 넣음
-            if (mesh.subMeshCount > 1)
-                pieceRenderer.sharedMaterials = new[] { shellMat, capMat };
-            else
-                pieceRenderer.sharedMaterial = shellMat;
+            pieceRenderer.sharedMaterials = BuildPieceMaterials(target, mesh, sourceRenderer, pieceMaterial, capMaterial);
 
             // 연속 컷용 레이: 메시 AABB 에 맞춘 BoxCollider(MeshCollider 대신)
             Bounds meshBounds = mesh.bounds;
@@ -139,11 +132,48 @@ namespace OrganicEngineer.MeshCutting.Sandbox
             {
                 if (_spawned[i] != go) continue;
                 _spawned.RemoveAt(i);
-                Destroy(go);
+                DestroySpawnedGameObject(go);
                 return true;
             }
 
             return false;
+        }
+
+        private Material[] BuildPieceMaterials(MeshFilter sourceFilter, Mesh resultMesh, MeshRenderer sourceRenderer, Material pieceMaterial, Material capMaterial)
+        {
+            int resultSubMeshCount = Mathf.Max(1, resultMesh.subMeshCount);
+            Material[] resultMaterials = new Material[resultSubMeshCount];
+            Material[] sourceMaterials = sourceRenderer.sharedMaterials;
+            bool sourceHasCap = IsSpawnedMeshFilter(sourceFilter)
+                                && sourceFilter.sharedMesh != null
+                                && sourceFilter.sharedMesh.subMeshCount > 0;
+            int sourceShellSubMeshCount = sourceHasCap ? sourceFilter.sharedMesh.subMeshCount - 1 : sourceFilter.sharedMesh.subMeshCount;
+            int resultShellSubMeshCount = Mathf.Max(0, resultSubMeshCount - 1);
+
+            for (int i = 0; i < resultShellSubMeshCount; i++)
+            {
+                resultMaterials[i] = ResolveShellMaterial(i, sourceShellSubMeshCount, sourceMaterials, sourceRenderer.sharedMaterial, pieceMaterial);
+            }
+
+            resultMaterials[resultSubMeshCount - 1] = ResolveCapMaterial(sourceHasCap, sourceShellSubMeshCount, sourceMaterials, sourceRenderer.sharedMaterial, pieceMaterial, capMaterial);
+            return resultMaterials;
+        }
+
+        private Material ResolveShellMaterial(int subMeshIndex, int sourceShellSubMeshCount, Material[] sourceMaterials, Material fallbackMaterial, Material pieceMaterial)
+        {
+            if (pieceMaterial != null) return pieceMaterial;
+            if (subMeshIndex < sourceShellSubMeshCount && subMeshIndex < sourceMaterials.Length)
+                return sourceMaterials[subMeshIndex];
+            return fallbackMaterial;
+        }
+
+        private Material ResolveCapMaterial(bool sourceHasCap, int sourceShellSubMeshCount, Material[] sourceMaterials, Material fallbackMaterial, Material pieceMaterial, Material capMaterial)
+        {
+            if (capMaterial != null) return capMaterial;
+            if (sourceHasCap && sourceShellSubMeshCount < sourceMaterials.Length)
+                return sourceMaterials[sourceShellSubMeshCount];
+            if (pieceMaterial != null) return pieceMaterial;
+            return fallbackMaterial;
         }
 
         //==============================================================================
@@ -159,7 +189,7 @@ namespace OrganicEngineer.MeshCutting.Sandbox
             int count = _spawned.Count;
             for (int i = 0; i < count; i++)
             {
-                Destroy(_spawned[i]);
+                DestroySpawnedGameObject(_spawned[i]);
             }
 
             // 목록 초기화
@@ -177,6 +207,23 @@ namespace OrganicEngineer.MeshCutting.Sandbox
 
             // 런타임 샌드박스 테스트 편의를 위해 조각 생성 시 자동 구성한다.
             gameObject.AddComponent<MeshCutPieceDragInput>();
+        }
+
+        //==============================================================================
+        // 기능: MeshCutPieceSpawn::DestroySpawnedGameObject
+        // 설명: 조각 GameObject 와 런타임 생성 Mesh 를 함께 파괴한다.
+        //==============================================================================
+        private void DestroySpawnedGameObject(GameObject spawned)
+        {
+            if (spawned == null) return;
+
+            MeshFilter meshFilter = spawned.GetComponent<MeshFilter>();
+            if (meshFilter != null && meshFilter.sharedMesh != null)
+            {
+                Destroy(meshFilter.sharedMesh);
+            }
+
+            Destroy(spawned);
         }
     }
 }

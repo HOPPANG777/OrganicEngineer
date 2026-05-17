@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using Sirenix.OdinInspector;
 using UnityEngine.Serialization;
@@ -16,10 +17,10 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         //-------------------- 맴버 변수 --------------------//
 
         // 메시 절단 코어 기능
-        private MeshCutter _meshCutter = new MeshCutter();
+        private MeshCutter _meshCutter;
 
         // 월드 평면을 로컬 평면으로 변환하는 기능
-        private CutPlaneConvert _cutPlaneConvert = new CutPlaneConvert();
+        private CutPlaneConvert _cutPlaneConvert;
 
         [Title("References")]
         // 원본 메시
@@ -38,7 +39,7 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         [SerializeField] private Material _pieceMaterial;
 
         // 단면 재료
-        [Tooltip("단면(서브메시 1) 머티리얼. 비우면 pieceMaterial과 동일")]
+        [Tooltip("단면(마지막 서브메시) 머티리얼. 비우면 pieceMaterial과 동일")]
         [FormerlySerializedAs("capMaterial")]
         [SerializeField] private Material _capMaterial;
 
@@ -62,6 +63,32 @@ namespace OrganicEngineer.MeshCutting.Sandbox
 
         // 스폰된 조각 수(진단·HUD).
         public int SpawnedPieceCount => _pieceSpawn != null ? _pieceSpawn.SpawnedCount : 0;
+
+        //-------------------- 생명주기 함수 --------------------//
+
+        //==============================================================================
+        // 기능: MeshCutSandboxController::Awake
+        // 설명: 샌드박스 절단 기능에 필요한 순수 C# 의존성을 한 곳에서 조립한다.
+        //==============================================================================
+        private void Awake()
+        {
+            // 외부 테스트에서 이미 주입한 경우 해당 인스턴스를 유지한다.
+            if (_meshCutter != null && _cutPlaneConvert != null) return;
+
+            Construct(BuildMeshCutter(), new CutPlaneConvert());
+        }
+
+        //-------------------- 생성 함수 --------------------//
+
+        //==============================================================================
+        // 기능: MeshCutSandboxController::Construct
+        // 설명: 테스트나 상위 조립 지점에서 MeshCutting 의존성을 주입한다.
+        //==============================================================================
+        public void Construct(MeshCutter meshCutter, CutPlaneConvert cutPlaneConvert)
+        {
+            _meshCutter = meshCutter;
+            _cutPlaneConvert = cutPlaneConvert;
+        }
 
         // Raycast 피판이 현재 자를 수 있는 MeshFilter(원본 활성 또는 스폰 조각)일 때만 true.
         public bool IsRayHitOnCutTarget(in RaycastHit hit)
@@ -97,6 +124,7 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         //==============================================================================
         public bool TryCutFromWorldPlane(Vector3 worldNormal, Vector3 worldPointOnPlane)
         {
+            EnsureCore();
             if (_target == null || !_target.gameObject.activeInHierarchy) return false;
             return TryCutFromWorldPlane(worldNormal, worldPointOnPlane, _target);
         }
@@ -108,6 +136,7 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         //==============================================================================
         public bool TryCutFromWorldPlane(Vector3 worldNormal, Vector3 worldPointOnPlane, MeshFilter cutSource)
         {
+            EnsureCore();
             if (cutSource == null || cutSource.sharedMesh == null) return false;
             if (!IsValidCutMeshFilter(cutSource)) return false;
             if (worldNormal.sqrMagnitude < 1e-14f)
@@ -133,6 +162,8 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         // 절개 실행
         public void Cut()
         {
+            EnsureCore();
+
             // 1. target / cutter null 체크, 이미 _isCut 이면 무시
             // 2. _originalMesh 에 target.sharedMesh 참조 저장
             // 3. CutPlaneConvert 로 월드 평면을 로컬 평면으로 변환
@@ -156,7 +187,8 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         //==============================================================================
         private bool TryCutInternal(Plane localPlane, MeshFilter cutSource)
         {
-            CutResult result = _meshCutter.Cut(cutSource.sharedMesh, localPlane);
+            int capSubMeshIndex = ResolveCapSubMeshIndex(cutSource);
+            CutResult result = _meshCutter.Cut(cutSource.sharedMesh, localPlane, capSubMeshIndex);
 
             if (result.relation != CutPlaneRelation.Straddling)
             {
@@ -196,6 +228,16 @@ namespace OrganicEngineer.MeshCutting.Sandbox
                     Debug.LogWarning("[MeshCut] 알 수 없는 분류: " + relation);
                     break;
             }
+        }
+
+        private int ResolveCapSubMeshIndex(MeshFilter cutSource)
+        {
+            if (cutSource == null || cutSource.sharedMesh == null) return -1;
+            if (cutSource == _target) return -1;
+            if (!EnsurePieceSpawn().IsSpawnedMeshFilter(cutSource)) return -1;
+
+            int subMeshCount = cutSource.sharedMesh.subMeshCount;
+            return subMeshCount > 0 ? subMeshCount - 1 : -1;
         }
 
         // 모든 조각 초기화
@@ -260,6 +302,54 @@ namespace OrganicEngineer.MeshCutting.Sandbox
             }
 
             return _pieceSpawn;
+        }
+
+        //==============================================================================
+        // 기능: MeshCutSandboxController::EnsureCore
+        // 설명: Awake 전에 호출되는 경우에도 Core 의존성을 사용할 수 있게 보장한다.
+        //==============================================================================
+        private void EnsureCore()
+        {
+            if (_meshCutter != null && _cutPlaneConvert != null) return;
+
+            Construct(BuildMeshCutter(), new CutPlaneConvert());
+        }
+
+        //==============================================================================
+        // 기능: MeshCutSandboxController::BuildMeshCutter
+        // 설명: MeshCutting Core 의존성 그래프를 엄격한 DI 방식으로 조립한다.
+        //==============================================================================
+        private static MeshCutter BuildMeshCutter()
+        {
+            // 정점 채널 조회와 모서리 보간 기능
+            MeshCutEdge meshCutEdge = new MeshCutEdge();
+
+            // 삼각형 복사와 분할 기능
+            MeshCutTriangle meshCutTriangle = new MeshCutTriangle();
+            MeshCutSplitProcessor meshCutSplitProcessor = new MeshCutSplitProcessor(meshCutEdge);
+            MeshCutSplit meshCutSplit = new MeshCutSplit(meshCutSplitProcessor, meshCutEdge);
+
+            // 캡 생성 기능
+            MeshCutHull meshCutHull = new MeshCutHull();
+            MeshCutWeld meshCutWeld = new MeshCutWeld(new Dictionary<Vector3Int, int>(), new List<Vector3>());
+            MeshCutCap meshCutCap = new MeshCutCap(meshCutHull, meshCutWeld);
+
+            // MeshCutter 내부 처리기
+            MeshCutterProcessor meshCutterProcessor = new MeshCutterProcessor(meshCutTriangle, meshCutSplit, meshCutCap);
+
+            // 반복 컷에서 재사용할 작업 버퍼
+            MeshCutterWorkBuffer workBuffer = new MeshCutterWorkBuffer
+            (
+                new List<Vector3>(),
+                new List<Vector2>(),
+                new List<Vector3>(),
+                new List<int>(),
+                new List<bool>(),
+                new MeshBuffer(),
+                new MeshBuffer()
+            );
+
+            return new MeshCutter(meshCutterProcessor, workBuffer);
         }
     }
 }

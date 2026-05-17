@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace OrganicEngineer.MeshCutting
@@ -14,7 +15,7 @@ namespace OrganicEngineer.MeshCutting
         //-------------------- 맴버 변수 --------------------//
 
         // 선분-평면 교차 허용 오차
-        private float _edgeIntersectEpsilon = 1e-5f;
+        private const float _edgeIntersectEpsilon = 1e-5f;
 
         //==============================================================================
         // 기능: MeshCutEdge::Lerp
@@ -26,9 +27,9 @@ namespace OrganicEngineer.MeshCutting
         public (Vector3 pos, Vector2 uv, Vector3 normal) Lerp
         (
             Plane plane,
-            Vector3[] srcVec,
-            Vector2[] srcUV,
-            Vector3[] srcNormal,
+            List<Vector3> srcVec,
+            List<Vector2> srcUV,
+            List<Vector3> srcNormal,
             int a,
             int b
         )
@@ -67,9 +68,9 @@ namespace OrganicEngineer.MeshCutting
         // TODO:
         //
         //==============================================================================
-        public Vector2 GetUV(Vector2[] uvs, int i)
+        public Vector2 GetUV(List<Vector2> uvs, int i)
         {
-            if (uvs == null || i < 0 || i >= uvs.Length)
+            if (uvs == null || i < 0 || i >= uvs.Count)
             {
                 return Vector2.zero;
             }
@@ -84,9 +85,9 @@ namespace OrganicEngineer.MeshCutting
         // TODO:
         //
         //==============================================================================
-        public Vector3 GetNormal(Vector3[] normals, int i)
+        public Vector3 GetNormal(List<Vector3> normals, int i)
         {
-            if (normals == null || i < 0 || i >= normals.Length)
+            if (normals == null || i < 0 || i >= normals.Count)
             {
                 return Vector3.up;
             }
