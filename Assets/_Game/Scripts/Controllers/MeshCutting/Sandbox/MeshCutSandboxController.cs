@@ -14,7 +14,7 @@ namespace OrganicEngineer.MeshCutting.Sandbox
     //==============================================================================
     public class MeshCutSandboxController : MonoBehaviour
     {
-        //-------------------- 맴버 변수 --------------------//
+        //-------------------- 멤버 변수 --------------------//
 
         // 메시 절단 코어 기능
         private MeshCutter _meshCutter;
@@ -151,6 +151,39 @@ namespace OrganicEngineer.MeshCutting.Sandbox
             return TryCutInternal(localPlane, cutSource);
         }
 
+        public bool TryCutFromWorldBoundedPlane
+        (
+            Vector3 worldNormal,
+            Vector3 worldSegmentStart,
+            Vector3 worldSegmentEnd,
+            float worldSpanPadding,
+            float worldBandPadding,
+            MeshFilter cutSource
+        )
+        {
+            EnsureCore();
+            if (cutSource == null || cutSource.sharedMesh == null) return false;
+            if (!IsValidCutMeshFilter(cutSource)) return false;
+            if (worldNormal.sqrMagnitude < 1e-14f)
+            {
+                Debug.LogWarning("[MeshCut] Bounded cut skipped: normal length is zero.");
+                return false;
+            }
+
+            worldNormal.Normalize();
+            _originalMesh = cutSource.sharedMesh;
+            BoundedCutPlane localPlane = _cutPlaneConvert.WorldToLocalBounded(
+                cutSource,
+                worldNormal,
+                worldSegmentStart,
+                worldSegmentEnd,
+                worldSpanPadding,
+                worldBandPadding
+            );
+
+            return TryCutInternal(localPlane, cutSource);
+        }
+
         //==============================================================================
         // 기능: MeshCutSandboxController::Cut
         // 설명: 월드 평면을 메시 로컬로 바꿔 멤버 절단 기능을 호출하고, Straddling 일 때만 조각 GO를 스폰한 뒤 타겟을 비활성화한다.
@@ -190,14 +223,28 @@ namespace OrganicEngineer.MeshCutting.Sandbox
             int capSubMeshIndex = ResolveCapSubMeshIndex(cutSource);
             CutResult result = _meshCutter.Cut(cutSource.sharedMesh, localPlane, capSubMeshIndex);
 
-            if (result.relation != CutPlaneRelation.Straddling)
+            return TryApplyCutResult(result, cutSource);
+        }
+
+        private bool TryCutInternal(BoundedCutPlane localPlane, MeshFilter cutSource)
+        {
+            int capSubMeshIndex = ResolveCapSubMeshIndex(cutSource);
+            CutResult result = _meshCutter.Cut(cutSource.sharedMesh, localPlane, capSubMeshIndex);
+
+            return TryApplyCutResult(result, cutSource);
+        }
+
+        private bool TryApplyCutResult(CutResult result, MeshFilter cutSource)
+        {
+
+            if (result.Relation != CutPlaneRelation.STRADDLING)
             {
-                LogNonStraddling(result.relation);
+                LogNonStraddling(result.Relation);
                 return false;
             }
 
-            SpawnPiece(cutSource, result.aboveMesh, "Above");
-            SpawnPiece(cutSource, result.belowMesh, "Below");
+            SpawnPiece(cutSource, result.AboveMesh, "Above");
+            SpawnPiece(cutSource, result.BelowMesh, "Below");
 
             if (cutSource == _target)
                 _target.gameObject.SetActive(false);
@@ -212,15 +259,15 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         {
             switch (relation)
             {
-                case CutPlaneRelation.EmptySource:
+                case CutPlaneRelation.EMPTY_SOURCE:
                     Debug.LogWarning("[MeshCut] 절단할 메시가 비어 있음.");
                     break;
 
-                case CutPlaneRelation.EntirelyAbove:
+                case CutPlaneRelation.ENTIRELY_ABOVE:
                     Debug.LogWarning("[MeshCut] 평면이 메시를 스치지 않음(전부 법선 +쪽).");
                     break;
 
-                case CutPlaneRelation.EntirelyBelow:
+                case CutPlaneRelation.ENTIRELY_BELOW:
                     Debug.LogWarning("[MeshCut] 평면이 메시를 스치지 않음(전부 법선 반대쪽).");
                     break;
 
@@ -317,26 +364,10 @@ namespace OrganicEngineer.MeshCutting.Sandbox
 
         //==============================================================================
         // 기능: MeshCutSandboxController::BuildMeshCutter
-        // 설명: MeshCutting Core 의존성 그래프를 엄격한 DI 방식으로 조립한다.
+        // 설명: MeshCutting Core 의 반복 작업 버퍼를 조립해 MeshCutter 에 주입한다.
         //==============================================================================
         private static MeshCutter BuildMeshCutter()
         {
-            // 정점 채널 조회와 모서리 보간 기능
-            MeshCutEdge meshCutEdge = new MeshCutEdge();
-
-            // 삼각형 복사와 분할 기능
-            MeshCutTriangle meshCutTriangle = new MeshCutTriangle();
-            MeshCutSplitProcessor meshCutSplitProcessor = new MeshCutSplitProcessor(meshCutEdge);
-            MeshCutSplit meshCutSplit = new MeshCutSplit(meshCutSplitProcessor, meshCutEdge);
-
-            // 캡 생성 기능
-            MeshCutHull meshCutHull = new MeshCutHull();
-            MeshCutWeld meshCutWeld = new MeshCutWeld(new Dictionary<Vector3Int, int>(), new List<Vector3>());
-            MeshCutCap meshCutCap = new MeshCutCap(meshCutHull, meshCutWeld);
-
-            // MeshCutter 내부 처리기
-            MeshCutterProcessor meshCutterProcessor = new MeshCutterProcessor(meshCutTriangle, meshCutSplit, meshCutCap);
-
             // 반복 컷에서 재사용할 작업 버퍼
             MeshCutterWorkBuffer workBuffer = new MeshCutterWorkBuffer
             (
@@ -346,10 +377,11 @@ namespace OrganicEngineer.MeshCutting.Sandbox
                 new List<int>(),
                 new List<bool>(),
                 new MeshBuffer(),
-                new MeshBuffer()
+                new MeshBuffer(),
+                new MeshCutCapBuffer()
             );
 
-            return new MeshCutter(meshCutterProcessor, workBuffer);
+            return new MeshCutter(workBuffer);
         }
     }
 }

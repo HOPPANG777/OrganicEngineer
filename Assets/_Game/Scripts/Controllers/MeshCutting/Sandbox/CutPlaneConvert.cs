@@ -40,5 +40,36 @@ namespace OrganicEngineer.MeshCutting.Sandbox
             Vector3 localPoint = target.transform.InverseTransformPoint(worldPointOnPlane);
             return new Plane(localNormal, localPoint);
         }
+
+        public BoundedCutPlane WorldToLocalBounded
+        (
+            MeshFilter target,
+            Vector3 worldNormalNormalized,
+            Vector3 worldSegmentStart,
+            Vector3 worldSegmentEnd,
+            float worldSpanPadding,
+            float worldBandPadding
+        )
+        {
+            Plane localPlane = WorldToLocal(target, worldNormalNormalized, worldSegmentStart);
+            Vector3 localStart = target.transform.InverseTransformPoint(worldSegmentStart);
+            Vector3 localEnd = target.transform.InverseTransformPoint(worldSegmentEnd);
+
+            float localSpanPadding = worldSpanPadding;
+            float localBandPadding = worldBandPadding;
+            Vector3 worldSegment = worldSegmentEnd - worldSegmentStart;
+            Vector3 localSegment = localEnd - localStart;
+            if (worldSegment.sqrMagnitude > 1e-10f && localSegment.sqrMagnitude > 1e-10f)
+            {
+                Vector3 worldPaddingVector = worldSegment.normalized * Mathf.Max(0f, worldSpanPadding);
+                Vector3 localPaddingVector = target.transform.InverseTransformVector(worldPaddingVector);
+                localSpanPadding = Mathf.Abs(Vector3.Dot(localPaddingVector, localSegment.normalized));
+
+                Vector3 localBandVector = target.transform.InverseTransformVector(worldSegment.normalized * Mathf.Max(0f, worldBandPadding));
+                localBandPadding = localBandVector.magnitude;
+            }
+
+            return new BoundedCutPlane(localPlane, localStart, localEnd, localSpanPadding, localBandPadding);
+        }
     }
 }

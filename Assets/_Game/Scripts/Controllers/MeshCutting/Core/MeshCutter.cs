@@ -12,10 +12,7 @@ namespace OrganicEngineer.MeshCutting
     //==============================================================================
     public class MeshCutter
     {
-        //-------------------- 맴버 변수 --------------------//
-
-        // MeshCutter에서 사용하는 다양한 함수의 모음
-        private readonly MeshCutterProcessor _meshCutterProcessor;
+        //-------------------- 멤버 변수 --------------------//
 
         // 반복 절단 중 재사용하는 작업 버퍼
         private readonly MeshCutterWorkBuffer _workBuffer;
@@ -24,14 +21,13 @@ namespace OrganicEngineer.MeshCutting
 
         //==============================================================================
         // 기능: MeshCutter::MeshCutter
-        // 설명: 절단 처리기와 작업 버퍼를 외부 조립 지점에서 주입받는다.
+        // 설명: 절단 작업에 필요한 재사용 버퍼를 외부 조립 지점에서 주입받는다.
         //==============================================================================
         // TODO:
         //
         //==============================================================================
-        internal MeshCutter(MeshCutterProcessor meshCutterProcessor, MeshCutterWorkBuffer workBuffer)
+        internal MeshCutter(MeshCutterWorkBuffer workBuffer)
         {
-            _meshCutterProcessor = meshCutterProcessor;
             _workBuffer = workBuffer;
         }
 
@@ -49,13 +45,32 @@ namespace OrganicEngineer.MeshCutting
         // capSubMeshIndex: 기존 캡 subMesh 인덱스. -1 이면 기존 캡 없음.
         public CutResult Cut(Mesh src, Plane planeLocal, int capSubMeshIndex = -1)
         {
+            return CutInternal(src, planeLocal, default, false, capSubMeshIndex);
+        }
+
+        public CutResult Cut(Mesh src, BoundedCutPlane boundedPlaneLocal, int capSubMeshIndex = -1)
+        {
+            if (!boundedPlaneLocal.IsValid)
+            {
+                CutResult invalidResult = new CutResult();
+                invalidResult.Relation = CutPlaneRelation.EMPTY_SOURCE;
+                return invalidResult;
+            }
+
+            CutResult result = CutInternal(src, boundedPlaneLocal.PlaneLocal, boundedPlaneLocal, false, capSubMeshIndex);
+            MeshCutIslandUtility.KeepSmallestIslandTouchingSegment(result, boundedPlaneLocal);
+            return result;
+        }
+
+        private CutResult CutInternal(Mesh src, Plane planeLocal, BoundedCutPlane boundedPlaneLocal, bool useBoundedPlane, int capSubMeshIndex)
+        {
             // 절단 결과 컨테이너 생성
             CutResult result = new CutResult();
 
             // 원본 Mesh 가 비어 있으면 EmptySource 로 종료
             if (src == null)
             {
-                result.relation = CutPlaneRelation.EmptySource;
+                result.Relation = CutPlaneRelation.EMPTY_SOURCE;
                 return result;
             }
 
@@ -68,7 +83,7 @@ namespace OrganicEngineer.MeshCutting
             // 정점이 없으면 EmptySource 로 종료
             if (_workBuffer.srcVerts.Count == 0)
             {
-                result.relation = CutPlaneRelation.EmptySource;
+                result.Relation = CutPlaneRelation.EMPTY_SOURCE;
                 return result;
             }
 
@@ -79,7 +94,7 @@ namespace OrganicEngineer.MeshCutting
             src.GetNormals(_workBuffer.srcNormals);
 
             // 각 정점이 평면 어느 쪽인지 계산
-            _meshCutterProcessor.BuildSideTable(_workBuffer.srcVerts, planeLocal, _workBuffer.side);
+            MeshCutUtility.BuildSideTable(_workBuffer.srcVerts, planeLocal, _workBuffer.side);
 
             // 평면 법선 +쪽 메시 버퍼
             MeshBuffer above = _workBuffer.above;
@@ -89,8 +104,8 @@ namespace OrganicEngineer.MeshCutting
 
             // 분할로 정점이 늘어날 수 있으므로 원본보다 넉넉하게 Capacity 확보
             int estimatedVertexCapacity = _workBuffer.srcVerts.Count * 2;
-            above.EnsureCapacity(estimatedVertexCapacity);
-            below.EnsureCapacity(estimatedVertexCapacity);
+            above.EnsureVertexCapacity(estimatedVertexCapacity);
+            below.EnsureVertexCapacity(estimatedVertexCapacity);
 
             // 삼각형 순회 중 실제 절단 발생 여부
             bool straddling = false;
@@ -110,7 +125,7 @@ namespace OrganicEngineer.MeshCutting
                 // 캡 subMesh 는 명시적으로 받은 인덱스만 사용한다. 원본 다중 외피 subMesh 와 충돌하지 않기 위함.
                 bool isCap = subMesh == capSubMeshIndex;
 
-                straddling |= _meshCutterProcessor.ProcessTriangles(
+                straddling |= MeshCutUtility.ProcessTriangles(
                     _workBuffer.srcVerts,
                     _workBuffer.srcUVs,
                     _workBuffer.srcNormals,
@@ -121,25 +136,33 @@ namespace OrganicEngineer.MeshCutting
                     below,
                     result,
                     subMesh,
-                    isCap
+                    isCap,
+                    boundedPlaneLocal,
+                    useBoundedPlane
                 );
             }
 
             // 삼각형이 하나도 없으면 EmptySource 로 종료
             if (!hasAnySourceTriangle)
             {
-                result.relation = CutPlaneRelation.EmptySource;
+                result.Relation = CutPlaneRelation.EMPTY_SOURCE;
                 return result;
             }
 
             // 절단 발생 여부에 따라 결과 관계와 캡을 정리
-            _meshCutterProcessor.ResolveResult(straddling, planeLocal.normal, above, below, result);
+            if (useBoundedPlane && !straddling)
+            {
+                result.Relation = CutPlaneRelation.ENTIRELY_BELOW;
+                return result;
+            }
+
+            MeshCutCap.AppendIfNeeded(straddling, planeLocal.normal, above, below, result, _workBuffer.cap);
 
             // Above 버퍼가 비어 있지 않으면 Mesh 로 변환
-            result.aboveMesh = above.HasAnyTriangle() ? above.ToMesh() : null;
+            result.AboveMesh = above.HasAnyTriangle() ? above.ToMesh() : null;
 
             // Below 버퍼가 비어 있지 않으면 Mesh 로 변환
-            result.belowMesh = below.HasAnyTriangle() ? below.ToMesh() : null;
+            result.BelowMesh = below.HasAnyTriangle() ? below.ToMesh() : null;
 
             return result;
         }
@@ -155,7 +178,7 @@ namespace OrganicEngineer.MeshCutting
     //==============================================================================
     readonly struct MeshCutterWorkBuffer
     {
-        //-------------------- 맴버 변수 --------------------//
+        //-------------------- 멤버 변수 --------------------//
 
         // 원본 정점 채널 임시 목록
         public readonly List<Vector3> srcVerts;
@@ -178,6 +201,9 @@ namespace OrganicEngineer.MeshCutting
         // 평면 법선 반대쪽 결과 누적 버퍼
         public readonly MeshBuffer below;
 
+        // 단면 캡 생성 중 재사용하는 보조 버퍼
+        public readonly MeshCutCapBuffer cap;
+
         //-------------------- 생성 함수 --------------------//
 
         //==============================================================================
@@ -195,7 +221,8 @@ namespace OrganicEngineer.MeshCutting
             List<int> srcTris,
             List<bool> side,
             MeshBuffer above,
-            MeshBuffer below
+            MeshBuffer below,
+            MeshCutCapBuffer cap
         )
         {
             this.srcVerts = srcVerts;
@@ -205,6 +232,7 @@ namespace OrganicEngineer.MeshCutting
             this.side = side;
             this.above = above;
             this.below = below;
+            this.cap = cap;
         }
 
         //-------------------- 기능 함수 --------------------//

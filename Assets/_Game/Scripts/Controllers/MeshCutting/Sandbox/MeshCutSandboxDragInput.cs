@@ -50,6 +50,16 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         [SerializeField]
         private float _minDragWorldSqr = 1e-8f;
 
+        [TabGroup("Raycast")]
+        [Tooltip("Finite drag cut padding in world units, applied before converting the dragged segment to mesh local space.")]
+        [SerializeField]
+        private float _boundedCutSpanPadding = 0.02f;
+
+        [TabGroup("Raycast")]
+        [Tooltip("World-space radius used to pick which cleanly-cut connected island belongs to the drag stroke.")]
+        [SerializeField]
+        private float _boundedCutSelectionRadius = 0.15f;
+
         [TabGroup("Preview")]
         [Tooltip("드래그 중 LineRenderer 로 구간 표시 여부")]
         [SerializeField]
@@ -311,7 +321,7 @@ namespace OrganicEngineer.MeshCutting.Sandbox
             if (normal.sqrMagnitude < _parallelCrossSqrEpsilon) return;
 
             normal.Normalize();
-            bool cutOk = _sandbox.TryCutFromWorldPlane(normal, worldA, downSource);
+            bool cutOk = _sandbox.TryCutFromWorldBoundedPlane(normal, worldA, worldB, _boundedCutSpanPadding, _boundedCutSelectionRadius, downSource);
             if (!cutOk)
                 _diagLastPointerDown = "RELEASE: TryCut false (평면 미적용 등)";
             else
