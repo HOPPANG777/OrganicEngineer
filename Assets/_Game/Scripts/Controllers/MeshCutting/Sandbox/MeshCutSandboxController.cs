@@ -19,6 +19,9 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         // 메시 절단 코어 기능
         private MeshCutter _meshCutter;
 
+        // 박스/프리즘 같은 볼록 볼륨 절단 기능
+        private ConvexVolumeMeshCutter _volumeCutter;
+
         // 월드 평면을 로컬 평면으로 변환하는 기능
         private CutPlaneConvert _cutPlaneConvert;
 
@@ -55,6 +58,9 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         // 절개 상태
         private bool _isCut;
 
+        // 스폰 직전 연결 섬 분리에 재사용하는 임시 Mesh 목록
+        private readonly List<Mesh> _meshIslandScratch = new List<Mesh>();
+
         // 드래그 컷 등에서 레이 대상 검증 시 사용한다(원본 앵커).
         public MeshFilter CutTargetMeshFilter => _target;
 
@@ -73,7 +79,7 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         private void Awake()
         {
             // 외부 테스트에서 이미 주입한 경우 해당 인스턴스를 유지한다.
-            if (_meshCutter != null && _cutPlaneConvert != null) return;
+            if (_meshCutter != null && _volumeCutter != null && _cutPlaneConvert != null) return;
 
             Construct(BuildMeshCutter(), new CutPlaneConvert());
         }
@@ -86,7 +92,17 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         //==============================================================================
         public void Construct(MeshCutter meshCutter, CutPlaneConvert cutPlaneConvert)
         {
+            Construct(meshCutter, new ConvexVolumeMeshCutter(meshCutter), cutPlaneConvert);
+        }
+
+        //==============================================================================
+        // 기능: MeshCutSandboxController::Construct
+        // 설명: 평면 커터, 볼륨 커터, 좌표 변환 기능을 외부에서 주입받는다.
+        //==============================================================================
+        public void Construct(MeshCutter meshCutter, ConvexVolumeMeshCutter volumeCutter, CutPlaneConvert cutPlaneConvert)
+        {
             _meshCutter = meshCutter;
+            _volumeCutter = volumeCutter;
             _cutPlaneConvert = cutPlaneConvert;
         }
 
@@ -185,6 +201,32 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         }
 
         //==============================================================================
+        // 기능: MeshCutSandboxController::TryCutFromWorldBoxVolume
+        // 설명: 월드 박스 볼륨을 cutSource 로컬 볼록 볼륨으로 변환해 내부/외부 조각을 스폰한다.
+        //==============================================================================
+        public bool TryCutFromWorldBoxVolume
+        (
+            Vector3 worldCenter,
+            Quaternion worldRotation,
+            Vector3 worldSize,
+            MeshFilter cutSource
+        )
+        {
+            EnsureCore();
+            if (cutSource == null || cutSource.sharedMesh == null) return false;
+            if (!IsValidCutMeshFilter(cutSource)) return false;
+            if (worldSize.x <= 0f || worldSize.y <= 0f || worldSize.z <= 0f)
+            {
+                Debug.LogWarning("[MeshCut] Box volume cut skipped: size must be positive.");
+                return false;
+            }
+
+            _originalMesh = cutSource.sharedMesh;
+            ConvexCutVolume localVolume = _cutPlaneConvert.WorldToLocalBoxVolume(cutSource, worldCenter, worldRotation, worldSize);
+            return TryCutInternal(localVolume, cutSource);
+        }
+
+        //==============================================================================
         // 기능: MeshCutSandboxController::Cut
         // 설명: 월드 평면을 메시 로컬로 바꿔 멤버 절단 기능을 호출하고, Straddling 일 때만 조각 GO를 스폰한 뒤 타겟을 비활성화한다.
         //==============================================================================
@@ -234,6 +276,18 @@ namespace OrganicEngineer.MeshCutting.Sandbox
             return TryApplyCutResult(result, cutSource);
         }
 
+        //==============================================================================
+        // 기능: MeshCutSandboxController::TryCutInternal
+        // 설명: 이미 cutSource 로컬인 볼록 볼륨으로 ConvexVolumeMeshCutter 를 호출하고 성공 시 스폰까지 마친다.
+        //==============================================================================
+        private bool TryCutInternal(ConvexCutVolume localVolume, MeshFilter cutSource)
+        {
+            int capSubMeshIndex = ResolveCapSubMeshIndex(cutSource);
+            CutVolumeResult result = _volumeCutter.Cut(cutSource.sharedMesh, localVolume, capSubMeshIndex);
+
+            return TryApplyCutVolumeResult(result, cutSource);
+        }
+
         private bool TryApplyCutResult(CutResult result, MeshFilter cutSource)
         {
 
@@ -243,8 +297,38 @@ namespace OrganicEngineer.MeshCutting.Sandbox
                 return false;
             }
 
-            SpawnPiece(cutSource, result.AboveMesh, "Above");
-            SpawnPiece(cutSource, result.BelowMesh, "Below");
+            SpawnPieceIslands(cutSource, result.AboveMesh, "Above");
+            SpawnPieceIslands(cutSource, result.BelowMesh, "Below");
+
+            if (cutSource == _target)
+                _target.gameObject.SetActive(false);
+            else
+                EnsurePieceSpawn().DestroySpawnedOwning(cutSource);
+
+            _isCut = true;
+            return true;
+        }
+
+        //==============================================================================
+        // 기능: MeshCutSandboxController::TryApplyCutVolumeResult
+        // 설명: 볼륨 절단 결과의 내부 조각과 외부 조각들을 스폰하고 원본 조각을 정리한다.
+        //==============================================================================
+        private bool TryApplyCutVolumeResult(CutVolumeResult result, MeshFilter cutSource)
+        {
+            if (result == null || result.Relation != CutVolumeRelation.INTERSECTING || result.InsideMesh == null)
+            {
+                LogNonIntersectingVolume(result != null ? result.Relation : CutVolumeRelation.EMPTY_SOURCE);
+                return false;
+            }
+
+            SpawnPieceIslands(cutSource, result.InsideMesh, "Inside");
+
+            List<Mesh> outsideMeshes = result.OutsideMeshes;
+            int outsideCount = outsideMeshes.Count;
+            for (int i = 0; i < outsideCount; i++)
+            {
+                SpawnPieceIslands(cutSource, outsideMeshes[i], "Outside" + i);
+            }
 
             if (cutSource == _target)
                 _target.gameObject.SetActive(false);
@@ -273,6 +357,32 @@ namespace OrganicEngineer.MeshCutting.Sandbox
 
                 default:
                     Debug.LogWarning("[MeshCut] 알 수 없는 분류: " + relation);
+                    break;
+            }
+        }
+
+        //==============================================================================
+        // 기능: MeshCutSandboxController::LogNonIntersectingVolume
+        // 설명: 볼륨 절단이 내부/외부 분리를 만들지 못한 이유를 로그로 출력한다.
+        //==============================================================================
+        private static void LogNonIntersectingVolume(CutVolumeRelation relation)
+        {
+            switch (relation)
+            {
+                case CutVolumeRelation.EMPTY_SOURCE:
+                    Debug.LogWarning("[MeshCut] 볼륨 절단 실패: 메쉬 또는 볼륨이 비어 있음.");
+                    break;
+
+                case CutVolumeRelation.ENTIRELY_INSIDE:
+                    Debug.LogWarning("[MeshCut] 볼륨이 메쉬 전체를 포함해 분리할 외부 조각이 없음.");
+                    break;
+
+                case CutVolumeRelation.ENTIRELY_OUTSIDE:
+                    Debug.LogWarning("[MeshCut] 볼륨이 메쉬와 교차하지 않음.");
+                    break;
+
+                default:
+                    Debug.LogWarning("[MeshCut] 알 수 없는 볼륨 분류: " + relation);
                     break;
             }
         }
@@ -328,6 +438,25 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         }
 
         //==============================================================================
+        // 기능: MeshCutSandboxController::SpawnPieceIslands
+        // 설명: 하나의 결과 Mesh 안에 떨어진 연결 섬이 여러 개 있으면 GameObject 를 분리해 스폰한다.
+        //==============================================================================
+        private void SpawnPieceIslands(MeshFilter trsSource, Mesh mesh, string suffix)
+        {
+            int islandCount = MeshCutIslandUtility.SplitIntoIslands(mesh, _meshIslandScratch);
+            if (islandCount == 0) return;
+
+            for (int i = 0; i < islandCount; i++)
+            {
+                string islandSuffix = islandCount == 1 ? suffix : suffix + "_" + i;
+                SpawnPiece(trsSource, _meshIslandScratch[i], islandSuffix);
+            }
+
+            if (islandCount > 1 && mesh != null)
+                Destroy(mesh);
+        }
+
+        //==============================================================================
         // 기능: MeshCutSandboxController::EnsurePieceSpawn
         // 설명: 조각 생성 컴포넌트가 없으면 같은 GameObject 에 자동으로 붙여 반환한다.
         //==============================================================================
@@ -357,7 +486,7 @@ namespace OrganicEngineer.MeshCutting.Sandbox
         //==============================================================================
         private void EnsureCore()
         {
-            if (_meshCutter != null && _cutPlaneConvert != null) return;
+            if (_meshCutter != null && _volumeCutter != null && _cutPlaneConvert != null) return;
 
             Construct(BuildMeshCutter(), new CutPlaneConvert());
         }

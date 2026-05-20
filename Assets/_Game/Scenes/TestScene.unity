@@ -921,6 +921,8 @@ MonoBehaviour:
   _maxRayDistance: 500
   _parallelCrossSqrEpsilon: 1e-10
   _minDragWorldSqr: 0.00000001
+  _boundedCutSpanPadding: 0.02
+  _boundedCutSelectionRadius: 0.15
   _showDragPreviewLine: 1
   _dragLineColorValid: {r: 1, g: 0.11814082, b: 0, a: 1}
   _dragLineColorMiss: {r: 0, g: 0, b: 0, a: 1}
@@ -1508,14 +1510,19 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 7cf3c6d71c5527441aba98b6f8eb6ed5, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1647424160}
+      addedObject: {fileID: 1647424164}
   m_SourcePrefab: {fileID: 100100000, guid: 7cf3c6d71c5527441aba98b6f8eb6ed5, type: 3}
 --- !u!1 &1647424159 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 7cf3c6d71c5527441aba98b6f8eb6ed5, type: 3}
   m_PrefabInstance: {fileID: 1647424158}
   m_PrefabAsset: {fileID: 0}
---- !u!65 &1647424160
+--- !u!33 &1647424161 stripped
+MeshFilter:
+  m_CorrespondingSourceObject: {fileID: -5754084199372789682, guid: 7cf3c6d71c5527441aba98b6f8eb6ed5, type: 3}
+  m_PrefabInstance: {fileID: 1647424158}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &1647424164
 BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1534,13 +1541,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.0125, y: 0.024999999, z: 0.005}
+  m_Size: {x: 0.0125, y: 0.024999999, z: 0.007}
   m_Center: {x: 0.006249999, y: 0, z: 0}
---- !u!33 &1647424161 stripped
-MeshFilter:
-  m_CorrespondingSourceObject: {fileID: -5754084199372789682, guid: 7cf3c6d71c5527441aba98b6f8eb6ed5, type: 3}
-  m_PrefabInstance: {fileID: 1647424158}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1707782299
 GameObject:
   m_ObjectHideFlags: 0

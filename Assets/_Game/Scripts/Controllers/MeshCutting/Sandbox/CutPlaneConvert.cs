@@ -71,5 +71,33 @@ namespace OrganicEngineer.MeshCutting.Sandbox
 
             return new BoundedCutPlane(localPlane, localStart, localEnd, localSpanPadding, localBandPadding);
         }
+
+        //==============================================================================
+        // 기능: CutPlaneConvert::WorldToLocalBoxVolume
+        // 설명: 월드 박스 볼륨의 6개 안쪽 방향 평면을 target 로컬 ConvexCutVolume 으로 변환한다.
+        //==============================================================================
+        public ConvexCutVolume WorldToLocalBoxVolume
+        (
+            MeshFilter target,
+            Vector3 worldCenter,
+            Quaternion worldRotation,
+            Vector3 worldSize
+        )
+        {
+            Vector3 halfSize = Vector3.Max(worldSize, Vector3.zero) * 0.5f;
+            Vector3 axisX = worldRotation * Vector3.right;
+            Vector3 axisY = worldRotation * Vector3.up;
+            Vector3 axisZ = worldRotation * Vector3.forward;
+
+            Plane[] planes = new Plane[6];
+            planes[0] = WorldToLocal(target, -axisX, worldCenter + axisX * halfSize.x);
+            planes[1] = WorldToLocal(target, axisX, worldCenter - axisX * halfSize.x);
+            planes[2] = WorldToLocal(target, -axisY, worldCenter + axisY * halfSize.y);
+            planes[3] = WorldToLocal(target, axisY, worldCenter - axisY * halfSize.y);
+            planes[4] = WorldToLocal(target, -axisZ, worldCenter + axisZ * halfSize.z);
+            planes[5] = WorldToLocal(target, axisZ, worldCenter - axisZ * halfSize.z);
+
+            return new ConvexCutVolume(planes);
+        }
     }
 }

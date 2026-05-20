@@ -265,7 +265,7 @@ namespace OrganicEngineer.MeshCutting
             var (pPos, pUV, pNormal) = LerpEdge(plane, srcVerts, srcUVs, srcNormals, lone, middle);
             var (qPos, qUV, qNormal) = LerpEdge(plane, srcVerts, srcUVs, srcNormals, lone, next);
 
-            if (useBoundedPlane && !boundedPlaneLocal.CutEdgeOverlapsSpan(pPos, qPos))
+            if (useBoundedPlane && !boundedPlaneLocal.CutEdgeTouchesSegmentBand(pPos, qPos))
             {
                 CopyTriangle(below, srcVerts, srcUVs, srcNormals, i0, i1, i2, sourceSubMeshIndex, isCap);
                 return false;

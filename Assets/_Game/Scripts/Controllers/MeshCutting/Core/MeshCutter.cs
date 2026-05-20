@@ -57,7 +57,7 @@ namespace OrganicEngineer.MeshCutting
                 return invalidResult;
             }
 
-            CutResult result = CutInternal(src, boundedPlaneLocal.PlaneLocal, boundedPlaneLocal, false, capSubMeshIndex);
+            CutResult result = CutInternal(src, boundedPlaneLocal.PlaneLocal, boundedPlaneLocal, true, capSubMeshIndex);
             MeshCutIslandUtility.KeepSmallestIslandTouchingSegment(result, boundedPlaneLocal);
             return result;
         }
