@@ -148,14 +148,19 @@ namespace OrganicEngineer.MeshCutting.Sandbox
                                 && sourceFilter.sharedMesh != null
                                 && sourceFilter.sharedMesh.subMeshCount > 0;
             int sourceShellSubMeshCount = sourceHasCap ? sourceFilter.sharedMesh.subMeshCount - 1 : sourceFilter.sharedMesh.subMeshCount;
-            int resultShellSubMeshCount = Mathf.Max(0, resultSubMeshCount - 1);
+            bool resultHasCap = resultSubMeshCount > sourceShellSubMeshCount;
+            int resultShellSubMeshCount = resultHasCap ? Mathf.Max(0, resultSubMeshCount - 1) : resultSubMeshCount;
 
             for (int i = 0; i < resultShellSubMeshCount; i++)
             {
                 resultMaterials[i] = ResolveShellMaterial(i, sourceShellSubMeshCount, sourceMaterials, sourceRenderer.sharedMaterial, pieceMaterial);
             }
 
-            resultMaterials[resultSubMeshCount - 1] = ResolveCapMaterial(sourceHasCap, sourceShellSubMeshCount, sourceMaterials, sourceRenderer.sharedMaterial, pieceMaterial, capMaterial);
+            if (resultHasCap)
+            {
+                resultMaterials[resultSubMeshCount - 1] = ResolveCapMaterial(sourceHasCap, sourceShellSubMeshCount, sourceMaterials, sourceRenderer.sharedMaterial, pieceMaterial, capMaterial);
+            }
+
             return resultMaterials;
         }
 

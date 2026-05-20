@@ -5,27 +5,25 @@ namespace OrganicEngineer.MeshCutting
 {
     //==============================================================================
     // 기능: MeshCutter
-    // 설명: 메시를 로컬 평면 기준으로 자르는 절단 코어 진입점이다.
+    // 설명: Mesh 를 로컬 절단 평면 기준으로 분류하고 Above/Below 결과 Mesh 를 생성하는 진입점이다.
     //==============================================================================
-    // TODO: 오목 단면, 스킨드 메시, 추가 버텍스 채널 지원
+    // TODO: 색상, 탄젠트, 본 가중치 등 추가 버텍스 채널 보간을 지원한다.
     //
     //==============================================================================
     public class MeshCutter
     {
         //-------------------- 멤버 변수 --------------------//
 
-        // 반복 절단 중 재사용하는 작업 버퍼
+        // 반복 절단 중 임시 리스트와 결과 버퍼를 재사용하기 위한 작업 버퍼
         private readonly MeshCutterWorkBuffer _workBuffer;
 
         //-------------------- 생성 함수 --------------------//
 
         //==============================================================================
         // 기능: MeshCutter::MeshCutter
-        // 설명: 절단 작업에 필요한 재사용 버퍼를 외부 조립 지점에서 주입받는다.
+        // 설명: 조립 지점에서 만든 작업 버퍼를 주입받아 절단 중 반복 할당을 줄인다.
         //==============================================================================
-        // TODO:
-        //
-        //==============================================================================
+        // workBuffer: 소스 채널, 분류표, 결과 MeshBuffer 를 담은 재사용 버퍼
         internal MeshCutter(MeshCutterWorkBuffer workBuffer)
         {
             _workBuffer = workBuffer;
@@ -35,19 +33,25 @@ namespace OrganicEngineer.MeshCutting
 
         //==============================================================================
         // 기능: MeshCutter::Cut
-        // 설명: 원본 Mesh 를 로컬 Plane 으로 분류/분할하고 Above/Below 결과 Mesh 를 반환한다.
-        //==============================================================================
-        // TODO: 절단 실패 원인 상세 코드 추가
-        //
+        // 설명: 무한 로컬 Plane 으로 Mesh 를 분류하고 실제 교차 삼각형을 분할한다.
         //==============================================================================
         // src: 절단할 원본 Mesh
-        // planeLocal: src 로컬 공간 기준 절단 평면
-        // capSubMeshIndex: 기존 캡 subMesh 인덱스. -1 이면 기존 캡 없음.
+        // planeLocal: src 로컬 좌표 기준 절단 평면
+        // capSubMeshIndex: 기존 캡 subMesh 인덱스. -1 이면 기존 캡이 없다고 본다.
+        // 반환: Above/Below 결과 Mesh 와 절단 관계
         public CutResult Cut(Mesh src, Plane planeLocal, int capSubMeshIndex = -1)
         {
             return CutInternal(src, planeLocal, default, false, capSubMeshIndex);
         }
 
+        //==============================================================================
+        // 기능: MeshCutter::Cut
+        // 설명: 드래그 선분 범위로 제한된 로컬 Plane 을 적용하고, 선분에 닿은 작은 조각을 선택한다.
+        //==============================================================================
+        // src: 절단할 원본 Mesh
+        // boundedPlaneLocal: 절단 평면과 드래그 선분 범위 정보
+        // capSubMeshIndex: 기존 캡 subMesh 인덱스. -1 이면 기존 캡이 없다고 본다.
+        // 반환: 제한 영역 절단 결과
         public CutResult Cut(Mesh src, BoundedCutPlane boundedPlaneLocal, int capSubMeshIndex = -1)
         {
             if (!boundedPlaneLocal.IsValid)
@@ -58,71 +62,67 @@ namespace OrganicEngineer.MeshCutting
             }
 
             CutResult result = CutInternal(src, boundedPlaneLocal.PlaneLocal, boundedPlaneLocal, true, capSubMeshIndex);
+
+            // 제한 절단은 전체 평면으로 한 번 자른 뒤, 드래그 선분에 닿은 섬만 잘린 조각으로 고른다.
             MeshCutIslandUtility.KeepSmallestIslandTouchingSegment(result, boundedPlaneLocal);
             return result;
         }
 
+        //==============================================================================
+        // 기능: MeshCutter::CutInternal
+        // 설명: 소스 Mesh 채널을 읽고 subMesh 별 삼각형을 분류한 뒤 캡과 결과 Mesh 를 완성한다.
+        //==============================================================================
+        // src: 절단할 Mesh
+        // planeLocal: src 로컬 좌표 기준 절단 평면
+        // boundedPlaneLocal: 제한 절단일 때 사용할 선분 범위 정보
+        // useBoundedPlane: true 이면 선분 길이 범위 밖의 삼각형은 자르지 않는다.
+        // capSubMeshIndex: 기존 캡으로 취급할 subMesh 인덱스
+        // 반환: 절단 관계와 결과 Mesh
         private CutResult CutInternal(Mesh src, Plane planeLocal, BoundedCutPlane boundedPlaneLocal, bool useBoundedPlane, int capSubMeshIndex)
         {
-            // 절단 결과 컨테이너 생성
             CutResult result = new CutResult();
-
-            // 원본 Mesh 가 비어 있으면 EmptySource 로 종료
             if (src == null)
             {
                 result.Relation = CutPlaneRelation.EMPTY_SOURCE;
                 return result;
             }
 
-            // 이전 절단의 임시 데이터를 비우고 Capacity 는 재사용
+            // 이전 절단의 임시 데이터는 비우고 Capacity 는 재사용한다.
             _workBuffer.Clear();
 
-            // 원본 정점 목록 참조
             src.GetVertices(_workBuffer.srcVerts);
-
-            // 정점이 없으면 EmptySource 로 종료
             if (_workBuffer.srcVerts.Count == 0)
             {
                 result.Relation = CutPlaneRelation.EMPTY_SOURCE;
                 return result;
             }
 
-            // 원본 UV 목록 참조(없으면 빈 목록)
+            // UV와 노멀은 없을 수 있으므로 MeshCutUtility.GetUV/GetNormal 에서 기본값을 보정한다.
             src.GetUVs(0, _workBuffer.srcUVs);
-
-            // 원본 노멀 목록 참조(없으면 빈 목록)
             src.GetNormals(_workBuffer.srcNormals);
 
-            // 각 정점이 평면 어느 쪽인지 계산
+            // 정점별로 평면의 어느 쪽에 있는지 미리 계산해 삼각형 처리에서 재사용한다.
             MeshCutUtility.BuildSideTable(_workBuffer.srcVerts, planeLocal, _workBuffer.side);
 
-            // 평면 법선 +쪽 메시 버퍼
             MeshBuffer above = _workBuffer.above;
-
-            // 평면 법선 반대쪽 메시 버퍼
             MeshBuffer below = _workBuffer.below;
 
-            // 분할로 정점이 늘어날 수 있으므로 원본보다 넉넉하게 Capacity 확보
+            // 교차 삼각형은 정점이 늘어나므로 원본 정점 수의 두 배 정도를 선확보한다.
             int estimatedVertexCapacity = _workBuffer.srcVerts.Count * 2;
             above.EnsureVertexCapacity(estimatedVertexCapacity);
             below.EnsureVertexCapacity(estimatedVertexCapacity);
 
-            // 삼각형 순회 중 실제 절단 발생 여부
             bool straddling = false;
-
-            // 소스 삼각형 존재 여부
             bool hasAnySourceTriangle = false;
 
             for (int subMesh = 0; subMesh < src.subMeshCount; subMesh++)
             {
-                // 원본 삼각형 인덱스 목록 참조
                 src.GetTriangles(_workBuffer.srcTris, subMesh);
                 if (_workBuffer.srcTris.Count == 0) continue;
 
-                // 하나 이상의 소스 삼각형이 있음을 기록
                 hasAnySourceTriangle = true;
 
-                // 캡 subMesh 는 명시적으로 받은 인덱스만 사용한다. 원본 다중 외피 subMesh 와 충돌하지 않기 위함.
+                // 기존 캡 subMesh 를 다시 자를 때는 외피가 아니라 캡 전용 subMesh 로 계속 누적한다.
                 bool isCap = subMesh == capSubMeshIndex;
 
                 straddling |= MeshCutUtility.ProcessTriangles(
@@ -142,76 +142,69 @@ namespace OrganicEngineer.MeshCutting
                 );
             }
 
-            // 삼각형이 하나도 없으면 EmptySource 로 종료
             if (!hasAnySourceTriangle)
             {
                 result.Relation = CutPlaneRelation.EMPTY_SOURCE;
                 return result;
             }
 
-            // 절단 발생 여부에 따라 결과 관계와 캡을 정리
+            // 제한 절단에서는 실제 분할이 하나도 없으면 선택할 조각도 없으므로 Below 로 처리한다.
             if (useBoundedPlane && !straddling)
             {
                 result.Relation = CutPlaneRelation.ENTIRELY_BELOW;
                 return result;
             }
 
+            // 실제 교차가 있으면 캡을 만들고, 없으면 Above/Below 버퍼 상태로 관계만 정한다.
             MeshCutCap.AppendIfNeeded(straddling, planeLocal.normal, above, below, result, _workBuffer.cap);
 
-            // Above 버퍼가 비어 있지 않으면 Mesh 로 변환
             result.AboveMesh = above.HasAnyTriangle() ? above.ToMesh() : null;
-
-            // Below 버퍼가 비어 있지 않으면 Mesh 로 변환
             result.BelowMesh = below.HasAnyTriangle() ? below.ToMesh() : null;
 
             return result;
         }
-
     }
 
     //==============================================================================
     // 기능: MeshCutterWorkBuffer
-    // 설명: MeshCutter 가 반복 절단 중 재사용하는 소스 채널/삼각형/분류/결과 버퍼를 보관한다.
+    // 설명: MeshCutter 가 한 번의 절단 동안 사용할 소스 채널, 분류표, 결과 버퍼를 묶는다.
     //==============================================================================
-    // TODO: 탄젠트·컬러 등 추가 채널이 필요하면 소스 채널 리스트 확장
+    // TODO: 추가 버텍스 채널을 지원할 때 소스 채널 리스트를 함께 확장한다.
     //
     //==============================================================================
     readonly struct MeshCutterWorkBuffer
     {
         //-------------------- 멤버 변수 --------------------//
 
-        // 원본 정점 채널 임시 목록
+        // 소스 Mesh 의 정점 위치 임시 목록
         public readonly List<Vector3> srcVerts;
 
-        // 원본 UV0 채널 임시 목록
+        // 소스 Mesh 의 UV0 임시 목록
         public readonly List<Vector2> srcUVs;
 
-        // 원본 노멀 채널 임시 목록
+        // 소스 Mesh 의 노멀 임시 목록
         public readonly List<Vector3> srcNormals;
 
-        // 원본 subMesh 삼각형 인덱스 임시 목록
+        // 현재 처리 중인 subMesh 의 삼각형 인덱스 임시 목록
         public readonly List<int> srcTris;
 
-        // 원본 정점별 평면 방향 분류 목록
+        // 각 소스 정점이 절단 평면의 + 방향에 있는지 기록한 분류표
         public readonly List<bool> side;
 
-        // 평면 법선 +쪽 결과 누적 버퍼
+        // 평면 법선 + 방향 결과를 누적하는 버퍼
         public readonly MeshBuffer above;
 
-        // 평면 법선 반대쪽 결과 누적 버퍼
+        // 평면 법선 반대 방향 결과를 누적하는 버퍼
         public readonly MeshBuffer below;
 
-        // 단면 캡 생성 중 재사용하는 보조 버퍼
+        // 절단면 캡 생성에 필요한 루프, 투영, 삼각분할 임시 버퍼
         public readonly MeshCutCapBuffer cap;
 
         //-------------------- 생성 함수 --------------------//
 
         //==============================================================================
         // 기능: MeshCutterWorkBuffer::MeshCutterWorkBuffer
-        // 설명: 외부 조립 지점에서 만든 작업용 리스트와 MeshBuffer 를 주입받는다.
-        //==============================================================================
-        // TODO:
-        //
+        // 설명: 외부 조립 지점에서 만든 임시 리스트와 MeshBuffer 를 하나의 작업 단위로 저장한다.
         //==============================================================================
         public MeshCutterWorkBuffer
         (
@@ -239,10 +232,7 @@ namespace OrganicEngineer.MeshCutting
 
         //==============================================================================
         // 기능: MeshCutterWorkBuffer::Clear
-        // 설명: Capacity 는 유지하고 이전 절단에서 누적된 데이터만 비운다.
-        //==============================================================================
-        // TODO:
-        //
+        // 설명: 다음 절단을 시작하기 전에 임시 데이터만 비우고 내부 Capacity 는 유지한다.
         //==============================================================================
         public void Clear()
         {
@@ -255,5 +245,4 @@ namespace OrganicEngineer.MeshCutting
             below.Clear();
         }
     }
-
 }

@@ -4,24 +4,24 @@ namespace OrganicEngineer.MeshCutting
 {
     //==============================================================================
     // 기능: ConvexCutVolume
-    // 설명: 안쪽을 향하는 평면 목록으로 구성된 볼록 절단 볼륨을 표현한다.
+    // 설명: 여러 개의 로컬 Plane 으로 구성된 볼록 절단 볼륨을 표현한다.
     //==============================================================================
     public readonly struct ConvexCutVolume
     {
         //-------------------- 멤버 변수 --------------------//
 
-        // 볼륨을 구성하는 로컬 평면 목록. 각 평면의 Above 쪽이 볼륨 내부다.
+        // 볼륨 경계를 이루는 평면 목록. 각 평면의 Above 쪽이 볼륨 내부로 취급된다.
         private readonly Plane[] _planes;
 
         //-------------------- Get 함수 --------------------//
 
-        // 유효한 평면 개수
+        // 볼륨을 구성하는 평면 개수
         public int PlaneCount
         {
             get => _planes != null ? _planes.Length : 0;
         }
 
-        // 절단 볼륨으로 사용할 수 있는지 여부
+        // 절단 볼륨으로 사용할 수 있는 평면이 하나 이상 있는지 여부
         public bool IsValid
         {
             get => PlaneCount > 0;
@@ -31,8 +31,9 @@ namespace OrganicEngineer.MeshCutting
 
         //==============================================================================
         // 기능: ConvexCutVolume::ConvexCutVolume
-        // 설명: 안쪽을 향하는 평면 배열을 보관한다.
+        // 설명: 볼륨을 구성할 로컬 평면 배열을 저장한다.
         //==============================================================================
+        // planes: 볼륨 경계 평면 배열
         public ConvexCutVolume(Plane[] planes)
         {
             _planes = planes;
@@ -42,8 +43,10 @@ namespace OrganicEngineer.MeshCutting
 
         //==============================================================================
         // 기능: ConvexCutVolume::GetPlane
-        // 설명: 지정 인덱스의 볼륨 평면을 반환한다.
+        // 설명: 지정한 순서의 볼륨 경계 평면을 반환한다.
         //==============================================================================
+        // index: 반환할 평면 인덱스
+        // 반환: index 위치의 로컬 절단 평면
         public Plane GetPlane(int index)
         {
             return _planes[index];
@@ -52,16 +55,20 @@ namespace OrganicEngineer.MeshCutting
 
     //==============================================================================
     // 기능: CutVolumeRelation
-    // 설명: 절단 볼륨과 소스 Mesh 의 포함 관계를 나타낸다.
+    // 설명: 절단 볼륨과 소스 Mesh 의 포함 또는 교차 관계를 나타낸다.
     //==============================================================================
     public enum CutVolumeRelation
     {
+        // 소스 Mesh 또는 절단 볼륨이 비어 있는 상태
         EMPTY_SOURCE,
 
+        // 볼륨이 Mesh 를 실제로 가로질러 내부와 외부가 분리된 상태
         INTERSECTING,
 
+        // Mesh 전체가 볼륨 내부에 있어 외부 조각이 없는 상태
         ENTIRELY_INSIDE,
 
+        // Mesh 전체가 볼륨 바깥에 있어 내부 조각이 없는 상태
         ENTIRELY_OUTSIDE
     }
 }

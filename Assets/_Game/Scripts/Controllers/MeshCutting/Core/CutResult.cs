@@ -5,43 +5,44 @@ namespace OrganicEngineer.MeshCutting
 {
     //==============================================================================
     // 기능: CutPlaneRelation
-    // 설명: 소스 메시와 메시 로컬 절단 평면의 포함·교차 관계를 나타내 UI·스폰 분기에 쓴다.
+    // 설명: 단일 절단 평면과 소스 Mesh 의 상대 위치 및 실제 분할 여부를 나타낸다.
     //==============================================================================
-    // TODO: 경계 접촉(touch only) 상태가 필요하면 값 추가 검토
+    // TODO: 평면에 닿기만 하고 분할되지 않는 Touch 상태가 필요하면 별도 enum 값을 추가한다.
     //
     //==============================================================================
     public enum CutPlaneRelation
     {
-        EMPTY_SOURCE, // 소스 또는 지오메트리 없음
+        // 소스 Mesh 가 없거나, 처리할 삼각형이 하나도 없는 상태
+        EMPTY_SOURCE,
 
-        STRADDLING, // 실제 교차 분할 발생
+        // 평면이 Mesh 를 실제로 가로질러 Above/Below 조각이 모두 생긴 상태
+        STRADDLING,
 
-        ENTIRELY_ABOVE, // 평면이 메시 한쪽만 포함(+법선 헬프와 동일)
+        // Mesh 전체가 평면 법선의 + 방향에만 있는 상태
+        ENTIRELY_ABOVE,
 
-        ENTIRELY_BELOW // 평면이 메시를 한쪽(+반대)으로만 포함
+        // Mesh 전체가 평면 법선의 반대 방향에만 있는 상태
+        ENTIRELY_BELOW
     }
 
     //==============================================================================
     // 기능: CutEdge
-    // 설명: 로컬 절단면 위 하나의 선분을 두 정점으로 표현한다.
-    //==============================================================================
-    // TODO:
-    //
+    // 설명: 절단 평면 위에 생긴 하나의 단면 선분을 Mesh 로컬 좌표로 보관한다.
     //==============================================================================
     public readonly struct CutEdge
     {
-        // 선분 끝 A
+        // 절단 선분의 첫 번째 끝점
         public Vector3 A { get; }
 
-        // 선분 끝 B
+        // 절단 선분의 두 번째 끝점
         public Vector3 B { get; }
 
         //==============================================================================
         // 기능: CutEdge::CutEdge
-        // 설명: 절단면 위 선분의 양 끝점을 저장한다.
+        // 설명: 단면 캡을 만들 때 사용할 절단 선분의 양 끝점을 저장한다.
         //==============================================================================
-        // a: 선분 시작점
-        // b: 선분 끝점
+        // a: 절단 선분의 첫 번째 끝점
+        // b: 절단 선분의 두 번째 끝점
         public CutEdge(Vector3 a, Vector3 b)
         {
             A = a;
@@ -51,29 +52,29 @@ namespace OrganicEngineer.MeshCutting
 
     //==============================================================================
     // 기능: CutResult
-    // 설명: MeshCutter 의 출력으로 관계값, 양쪽 Mesh, 캡용 에지 리스트와 절단 여부를 담는다.
+    // 설명: 단일 평면 절단 결과 Mesh, 포함 관계, 캡 생성용 절단 에지를 함께 보관한다.
     //==============================================================================
-    // TODO: 메시 라이프사이클(누가 Destroy 하는지)·풀링 훅 노출 검토
+    // TODO: 런타임 생성 Mesh 소유권과 Destroy 책임을 별도 타입으로 더 명확히 분리한다.
     //
     //==============================================================================
     public sealed class CutResult
     {
-        // 절단 평면과 소스 메시의 관계 플래그
+        // 절단 평면과 소스 Mesh 의 최종 관계
         public CutPlaneRelation Relation { get; internal set; }
 
-        // +법선 쪽 조각(없으면 null)
+        // 평면 법선 + 방향에 남은 결과 Mesh. 없으면 null 이다.
         public Mesh AboveMesh { get; internal set; }
 
-        // 반대쪽 조각(없으면 null)
+        // 평면 법선 반대 방향에 남은 결과 Mesh. 없으면 null 이다.
         public Mesh BelowMesh { get; internal set; }
 
-        // STRADDLING 일 때 true 를 반환하는 보조 getter
+        // 실제 절단으로 두 조각이 만들어졌는지 확인하는 편의 속성
         public bool WasCut => Relation == CutPlaneRelation.STRADDLING;
 
-        // Above 캡 에지 목록
+        // AboveMesh 의 단면 캡을 만들 때 사용하는 절단 에지 목록
         internal List<CutEdge> AboveCapEdges { get; } = new List<CutEdge>();
 
-        // Below 캡 에지 목록
+        // BelowMesh 의 단면 캡을 만들 때 사용하는 절단 에지 목록
         internal List<CutEdge> BelowCapEdges { get; } = new List<CutEdge>();
     }
 }
